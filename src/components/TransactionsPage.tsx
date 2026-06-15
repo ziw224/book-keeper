@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { ListChecks, Plus, ArrowUp, ArrowDown, Pencil, Trash2, ChevronDown, ChevronRight, Check, Keyboard, X, Calendar, Tag, Search } from 'lucide-react';
 import { formatUSD, toCents } from '@/lib/money';
-import { SUGGESTED_CATEGORIES, categoryColor, categoryIcon } from '@/lib/categories';
+import { SUGGESTED_CATEGORIES, categoryColor, categoryIcon, getAllCategories, addCustomCategory } from '@/lib/categories';
 import type { StatementCycle } from '@/lib/cycle';
 import CalendarPicker, { CalendarNotice } from '@/components/CalendarPicker';
 
@@ -171,7 +171,7 @@ function CategoryDropdown({ selected, onChange }: { selected: string[]; onChange
   const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
-  const allIds = SUGGESTED_CATEGORIES as unknown as string[];
+  const allIds = getAllCategories();
   const allSelected = allIds.length > 0 && allIds.every(id => selected.includes(id));
   const noneSelected = selected.length === 0;
 
@@ -260,6 +260,125 @@ function CategoryDropdown({ selected, onChange }: { selected: string[]; onChange
               );
             })}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Category picker with custom emoji support ───────────── */
+
+function CategoryPickerModal({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [newIcon, setNewIcon] = useState('');
+  const [newName, setNewName] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function esc(e: KeyboardEvent) { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); setCreating(false); } }
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  const allCats = getAllCategories();
+  const filtered = allCats.filter(c => c.toLowerCase().includes(query.toLowerCase()));
+  const display = value ? `${categoryIcon(value)} ${value}` : '';
+
+  function handleCreate() {
+    const name = newName.trim();
+    const icon = newIcon.trim() || '📌';
+    if (!name) return;
+    addCustomCategory(name, icon);
+    onChange(name);
+    setCreating(false);
+    setNewIcon('');
+    setNewName('');
+    setOpen(false);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`flex h-[42px] w-full items-center justify-between rounded-xl border bg-white px-3 text-left text-sm transition ${
+          open ? 'border-indigo-400 ring-4 ring-indigo-100' : 'border-slate-200'
+        }`}
+      >
+        <span className={display ? '' : 'text-slate-400'}>{display || 'Select category…'}</span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+6px)] z-[60] w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2.5">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search categories..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-56 overflow-auto p-1">
+            {filtered.map(cat => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => { onChange(cat); setOpen(false); setQuery(''); }}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${value === cat ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
+              >
+                <span className="text-sm">{categoryIcon(cat)}</span>
+                <span className="truncate">{cat}</span>
+                {value === cat && <Check className="ml-auto h-4 w-4 shrink-0 text-indigo-600" />}
+              </button>
+            ))}
+            {query && !filtered.length && (
+              <p className="px-3 py-2 text-xs text-slate-400">No match — create a custom category below</p>
+            )}
+          </div>
+
+          {/* Create custom category */}
+          {!creating ? (
+            <button
+              type="button"
+              onClick={() => setCreating(true)}
+              className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2.5 text-left text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
+            >
+              <Plus className="h-4 w-4" />
+              Create custom category
+            </button>
+          ) : (
+            <div className="border-t border-slate-100 p-3 space-y-2">
+              <p className="text-xs font-semibold text-slate-500">New category</p>
+              <div className="flex gap-2">
+                <input
+                  value={newIcon}
+                  onChange={e => setNewIcon(e.target.value)}
+                  placeholder="😀"
+                  className="h-9 w-12 rounded-lg border border-slate-200 text-center text-lg outline-none focus:border-indigo-400"
+                  maxLength={2}
+                />
+                <input
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  placeholder="Category name"
+                  className="h-9 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); handleCreate(); } }}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={handleCreate} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Add</button>
+                <button type="button" onClick={() => setCreating(false)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50">Cancel</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -654,16 +773,7 @@ export default function TransactionsPage() {
                 />
               </FmField>
               <FmField label="Category">
-                <ModalDropdown
-                  value={fmCat}
-                  label="Category"
-                  placeholder="Select category…"
-                  options={SUGGESTED_CATEGORIES.map(c => ({
-                    value: c, label: c,
-                    icon: <span className="text-sm">{categoryIcon(c)}</span>,
-                  }))}
-                  onChange={setFmCat}
-                />
+                <CategoryPickerModal value={fmCat} onChange={setFmCat} />
               </FmField>
               <FmField label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="Optional notes" className={fmInputCls} /></FmField>
             </div>
