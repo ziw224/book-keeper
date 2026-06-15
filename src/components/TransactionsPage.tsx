@@ -166,12 +166,12 @@ function Dropdown({ value, label, options, onChange, icon: Icon, disabled, place
 
 /* ── Category dropdown with search ─────────────────────── */
 
-function CategoryDropdown({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
+function CategoryDropdown({ selected, onChange, availableCategories }: { selected: string[]; onChange: (v: string[]) => void; availableCategories: string[] }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
 
-  const allIds = getAllCategories();
+  const allIds = availableCategories;
   const allSelected = allIds.length > 0 && allIds.every(id => selected.includes(id));
   const noneSelected = selected.length === 0;
 
@@ -398,7 +398,7 @@ export default function TransactionsPage() {
 
   const [fCard, setFCard] = useState('');
   const [fCycle, setFCycle] = useState('');
-  const [fCats, setFCats] = useState<string[]>([...SUGGESTED_CATEGORIES]);
+  const [fCats, setFCats] = useState<string[]>([]);
   const [fFrom, setFFrom] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -466,7 +466,20 @@ export default function TransactionsPage() {
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
 
-  const allCatsSelected = SUGGESTED_CATEGORIES.length > 0 && (SUGGESTED_CATEGORIES as unknown as string[]).every(c => fCats.includes(c));
+  const availableCategories = useMemo(() => {
+    const cats = new Set(txns.map(t => t.category));
+    return [...cats].sort();
+  }, [txns]);
+
+  useEffect(() => {
+    setFCats(prev => {
+      const valid = prev.filter(c => availableCategories.includes(c));
+      if (valid.length === prev.length) return prev;
+      return valid.length > 0 ? valid : availableCategories;
+    });
+  }, [availableCategories]);
+
+  const allCatsSelected = availableCategories.length > 0 && availableCategories.every(c => fCats.includes(c));
   const noCatsSelected = fCats.length === 0;
 
   const sorted = useMemo(() => {
@@ -726,7 +739,7 @@ export default function TransactionsPage() {
             disabled={!fCard || selectedCardIsDebit}
           />
 
-          <CategoryDropdown selected={fCats} onChange={setFCats} />
+          <CategoryDropdown selected={fCats} onChange={setFCats} availableCategories={availableCategories} />
 
           <div className="flex items-center gap-3">
             <div className="w-44">
