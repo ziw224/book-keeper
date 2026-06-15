@@ -17,6 +17,21 @@ describe('toCents', () => {
   it('throws on non-numeric', () => {
     expect(() => toCents('abc')).toThrow()
   })
+  it('evaluates addition expression', () => {
+    expect(toCents('225.4+3.99')).toBe(22939)
+  })
+  it('evaluates subtraction expression', () => {
+    expect(toCents('100-25.50')).toBe(7450)
+  })
+  it('evaluates multiplication expression', () => {
+    expect(toCents('3*4.5')).toBe(1350)
+  })
+  it('evaluates complex expression', () => {
+    expect(toCents('10+20+5.99')).toBe(3599)
+  })
+  it('evaluates negative result expression', () => {
+    expect(toCents('-10+3')).toBe(-700)
+  })
 })
 
 describe('fromCents', () => {
