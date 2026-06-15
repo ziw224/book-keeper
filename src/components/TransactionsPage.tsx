@@ -894,7 +894,7 @@ export default function TransactionsPage() {
           >
             {!fCard && <Check className="h-4 w-4" />}
             All Cards
-            <span className="text-slate-400">({txns.length})</span>
+            <span className="text-slate-400">({txns.filter(t => !t.isStatementAdjustment).length})</span>
           </button>
           {cards.map(c => {
             const active = fCard === c.id;

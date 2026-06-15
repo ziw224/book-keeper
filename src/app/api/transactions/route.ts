@@ -57,6 +57,8 @@ export async function GET(req: NextRequest) {
 
     for (const sb of stmtBalances) {
       if (cardId && sb.cardId !== cardId) continue
+      if (from && sb.cycleEndDate < from) continue
+      if (to && sb.cycleStartDate > to) continue
       const cycleTxns = transactions.filter(t => t.cardId === sb.cardId && t.date >= sb.cycleStartDate && t.date <= sb.cycleEndDate)
       const manualTotal = cycleTxns.reduce((s, t) => s + t.amountCents, 0)
       const adjustment = sb.statementTotalCents - manualTotal
