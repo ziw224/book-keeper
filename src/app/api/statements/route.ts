@@ -56,6 +56,21 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(sb, { status: 201 })
 }
 
+export async function PATCH(req: NextRequest) {
+  const body = await req.json()
+  const { id, paymentStatus, paidDate } = body
+  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  try {
+    const data: Record<string, unknown> = {}
+    if (paymentStatus) data.paymentStatus = paymentStatus
+    if (paidDate !== undefined) data.paidDate = paidDate
+    const sb = await prisma.statementBalance.update({ where: { id }, data })
+    return NextResponse.json(sb)
+  } catch {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+}
+
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const id = searchParams.get('id')

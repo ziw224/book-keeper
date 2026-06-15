@@ -52,6 +52,8 @@ model StatementBalance {
   cycleEndDate        String
   statementTotalCents Int
   notes               String?
+  paymentStatus       String   @default("pending")
+  paidDate            String?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

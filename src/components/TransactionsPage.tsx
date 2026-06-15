@@ -18,6 +18,9 @@ interface Txn {
   recurringRuleId?: string | null; isRecurringGenerated?: boolean;
   isStatementAdjustment?: boolean;
   isPending?: boolean;
+  paymentStatus?: string;
+  paidDate?: string | null;
+  statementBalanceId?: string;
   card: { id: string; name: string; type: string; statementCloseDay: number | null };
 }
 type SortKey = 'date' | 'amt' | 'cat';
@@ -731,6 +734,14 @@ export default function TransactionsPage() {
     catch { setError('Could not delete.'); }
   }
 
+  async function markStatementStatus(sbId: string, status: string, paidDate: string | null) {
+    try {
+      await apiFetch('/api/statements', { method: 'PATCH', body: JSON.stringify({ id: sbId, paymentStatus: status, paidDate }) });
+      showToast(status === 'paid' ? 'Marked as paid' : 'Reverted to pending');
+      fetchTxns();
+    } catch { setError('Could not update status.'); }
+  }
+
   function periodLabel(t: Txn) {
     if (t.cycleLabel) return t.cycleLabel.replace(/ 20\d\d$/, '');
     return calendarMonth(t.date);
@@ -783,12 +794,16 @@ export default function TransactionsPage() {
       );
     }
     return (
-      <tr key={t.id} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/50 ${t.isPending ? 'bg-amber-50/40' : ''}`}>
+      <tr key={t.id} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/50 ${t.isStatementAdjustment ? (t.paymentStatus === 'paid' ? 'bg-emerald-50/30' : 'bg-amber-50/40') : ''}`}>
         <td className="px-5 py-3.5 text-sm font-medium text-slate-500">{t.date.slice(5)}</td>
         <td className="px-5 py-3.5 text-sm font-semibold">
           {t.merchant}
           {t.recurringRuleId && <span className="ml-1.5 text-xs" title="Recurring">🔁</span>}
-          {t.isPending && <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Pending</span>}
+          {t.isStatementAdjustment && (
+            t.paymentStatus === 'paid'
+              ? <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Paid{t.paidDate ? ` ${t.paidDate.slice(5)}` : ''}</span>
+              : <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Pending</span>
+          )}
         </td>
         <td className="px-5 py-3.5 text-sm">
           <span className="mr-1">{categoryIcon(t.category)}</span>
@@ -801,8 +816,18 @@ export default function TransactionsPage() {
         <td className="px-5 py-3.5 text-sm text-slate-500 break-words">{t.notes || ''}</td>
         <td className="px-5 py-3.5 text-right">
           <span className="inline-flex gap-1 text-slate-400">
-            <button onClick={() => openEdit(t)} aria-label="Edit" className="rounded-lg p-1 hover:bg-slate-100 hover:text-indigo-600 transition-colors"><Pencil className="h-4 w-4" /></button>
-            <button onClick={() => setPending(t.id)} aria-label="Delete" className="rounded-lg p-1 hover:bg-slate-100 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+            {t.isStatementAdjustment && t.statementBalanceId ? (
+              t.paymentStatus === 'paid' ? (
+                <button onClick={() => markStatementStatus(t.statementBalanceId!, 'pending', null)} className="rounded-lg px-2 py-1 text-[10px] font-bold text-slate-500 hover:bg-slate-100">Undo</button>
+              ) : (
+                <button onClick={() => markStatementStatus(t.statementBalanceId!, 'paid', todayYMD())} className="rounded-lg px-2 py-1 text-[10px] font-bold text-emerald-600 hover:bg-emerald-50">Mark paid</button>
+              )
+            ) : (
+              <>
+                <button onClick={() => openEdit(t)} aria-label="Edit" className="rounded-lg p-1 hover:bg-slate-100 hover:text-indigo-600 transition-colors"><Pencil className="h-4 w-4" /></button>
+                <button onClick={() => setPending(t.id)} aria-label="Delete" className="rounded-lg p-1 hover:bg-slate-100 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+              </>
+            )}
           </span>
         </td>
       </tr>

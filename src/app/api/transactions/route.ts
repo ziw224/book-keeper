@@ -86,7 +86,10 @@ export async function GET(req: NextRequest) {
           cycleKey: sb.cycleKey,
           cycleLabel: `${MONTH_NAMES[Number(sb.cycleKey.split('-')[1])]} ${sb.cycleKey.split('-')[0]}`,
           isStatementAdjustment: true,
-          isPending: true,
+          isPending: sb.paymentStatus === 'pending',
+          paymentStatus: sb.paymentStatus,
+          paidDate: sb.paidDate,
+          statementBalanceId: sb.id,
           createdAt: sb.createdAt,
           updatedAt: sb.updatedAt,
         } as typeof withCycle[0])
