@@ -14,7 +14,7 @@ interface Txn {
   category: string; notes?: string | null; cycleKey: string | null; cycleLabel: string | null;
   card: { id: string; name: string; type: string; statementCloseDay: number | null };
 }
-type SortKey = 'date' | 'amt';
+type SortKey = 'date' | 'amt' | 'cat';
 
 async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(url, { headers: init.body ? { 'Content-Type': 'application/json' } : undefined, ...init });
@@ -264,7 +264,7 @@ export default function TransactionsPage() {
   const sorted = useMemo(() => {
     const filtered = noCatsSelected ? [] : allCatsSelected ? txns : txns.filter(t => fCats.includes(t.category));
     return [...filtered].sort((a, b) => {
-      const x = sortKey === 'date' ? a.date.localeCompare(b.date) : a.amountCents - b.amountCents;
+      const x = sortKey === 'date' ? a.date.localeCompare(b.date) : sortKey === 'cat' ? a.category.localeCompare(b.category) : a.amountCents - b.amountCents;
       return x * sortDir;
     });
   }, [txns, sortKey, sortDir, fCats, allCatsSelected, noCatsSelected]);
@@ -405,7 +405,7 @@ export default function TransactionsPage() {
           <tr className="border-b border-slate-100">
             <SortTh onClick={() => toggleSort('date')} active={sortKey === 'date'} dir={sortDir}>Date</SortTh>
             <th className={thCls}>Merchant</th>
-            <th className={thCls}>Category</th>
+            <SortTh onClick={() => toggleSort('cat')} active={sortKey === 'cat'} dir={sortDir}>Category</SortTh>
             <th className={thCls}>Period</th>
             <SortTh onClick={() => toggleSort('amt')} active={sortKey === 'amt'} dir={sortDir} align="right">Amount</SortTh>
             <th className={thCls}>Notes</th>
