@@ -8,7 +8,7 @@ import CycleTrend from '@/components/CycleTrend'
 import EmptyState from '@/components/EmptyState'
 import Link from 'next/link'
 
-interface Card { id: string; name: string }
+interface Card { id: string; name: string; type: string }
 interface Cycle { key: string; label: string }
 interface SummaryBucket { name: string; total: number; count: number }
 interface CardBucket { cardId: string; name: string; total: number }
@@ -31,9 +31,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/cards').then(r => r.json()).then((c: Card[]) => {
-      setCards(c)
-      if (c.length > 0) setSelectedCard(c[0].id)
+    fetch('/api/cards').then(r => r.json()).then((all: Card[]) => {
+      const creditCards = all.filter(c => c.type === 'credit')
+      setCards(creditCards)
+      if (creditCards.length > 0) setSelectedCard(creditCards[0].id)
     })
   }, [])
 

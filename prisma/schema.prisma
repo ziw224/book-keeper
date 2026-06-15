@@ -12,7 +12,8 @@ model Card {
   name              String
   issuer            String
   last4             String
-  statementCloseDay Int
+  type              String        @default("credit")
+  statementCloseDay Int?
   transactions      Transaction[]
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt

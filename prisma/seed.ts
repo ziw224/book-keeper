@@ -13,6 +13,7 @@ async function main() {
       name: 'Sapphire Reserve',
       issuer: 'Chase',
       last4: '4821',
+      type: 'credit',
       statementCloseDay: 15,
     },
   })
@@ -23,6 +24,7 @@ async function main() {
       name: 'Gold Card',
       issuer: 'Amex',
       last4: '0037',
+      type: 'credit',
       statementCloseDay: 28,
     },
   })
@@ -75,7 +77,31 @@ async function main() {
     })
   }
 
-  console.log('Seeded 2 cards and', sapphireTxns.length + goldTxns.length, 'transactions')
+  // Card 3: Debit card (no statement close day)
+  const checking = await prisma.card.create({
+    data: {
+      name: 'Checking Account',
+      issuer: 'Chase',
+      last4: '9012',
+      type: 'debit',
+      statementCloseDay: null,
+    },
+  })
+
+  const debitTxns = [
+    { date: '2026-06-02', merchant: 'Farmers Market', amountCents: 3200, category: 'Groceries' },
+    { date: '2026-06-10', merchant: 'Gas Station', amountCents: 5500, category: 'Transport' },
+    { date: '2026-06-18', merchant: 'ATM Fee', amountCents: 300, category: 'Fees' },
+    { date: '2026-06-25', merchant: 'Farmers Market', amountCents: -800, category: 'Groceries', notes: 'Overcharge refund' },
+  ]
+
+  for (const txn of debitTxns) {
+    await prisma.transaction.create({
+      data: { cardId: checking.id, ...txn },
+    })
+  }
+
+  console.log('Seeded 3 cards and', sapphireTxns.length + goldTxns.length + debitTxns.length, 'transactions')
 }
 
 main()

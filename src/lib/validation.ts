@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { SUGGESTED_CATEGORIES } from '@/lib/categories'
 
 const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
 
@@ -14,10 +13,42 @@ export const cardCreateSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   issuer: z.string().min(1, 'Issuer is required'),
   last4: z.string().length(4, 'Must be exactly 4 characters'),
-  statementCloseDay: z.number().int().min(1).max(31),
+  type: z.enum(['credit', 'debit']).default('credit'),
+  statementCloseDay: z.number().int().min(1).max(31).nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.type === 'credit') {
+    if (data.statementCloseDay == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Statement close day is required for credit cards (1–31)',
+        path: ['statementCloseDay'],
+      })
+    }
+  } else {
+    if (data.statementCloseDay != null) {
+      data.statementCloseDay = null
+    }
+  }
 })
 
-export const cardUpdateSchema = cardCreateSchema.partial()
+export const cardUpdateSchema = z.object({
+  name: z.string().min(1, 'Name is required').optional(),
+  issuer: z.string().min(1, 'Issuer is required').optional(),
+  last4: z.string().length(4, 'Must be exactly 4 characters').optional(),
+  type: z.enum(['credit', 'debit']).optional(),
+  statementCloseDay: z.number().int().min(1).max(31).nullable().optional(),
+}).superRefine((data, ctx) => {
+  if (data.type === 'credit' && data.statementCloseDay === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Statement close day is required for credit cards (1–31)',
+      path: ['statementCloseDay'],
+    })
+  }
+  if (data.type === 'debit') {
+    data.statementCloseDay = null
+  }
+})
 
 export const transactionCreateSchema = z.object({
   cardId: z.string().min(1),

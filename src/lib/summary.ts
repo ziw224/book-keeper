@@ -18,7 +18,7 @@ export async function getSummary(params: SummaryParams) {
 
   if (cycleKey && cardId) {
     const card = await prisma.card.findUnique({ where: { id: cardId } })
-    if (card) {
+    if (card && card.type === 'credit' && card.statementCloseDay != null) {
       const [cy, cm] = cycleKey.split('-').map(Number)
       const range = getCycleRange(cy, cm, card.statementCloseDay)
       startDate = range.startDate
@@ -41,7 +41,7 @@ export async function getSummary(params: SummaryParams) {
 
   const transactions = await prisma.transaction.findMany({
     where,
-    include: { card: { select: { id: true, name: true, statementCloseDay: true } } },
+    include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
   })
 
   let total = 0
@@ -82,7 +82,7 @@ export async function getSummary(params: SummaryParams) {
 
 export async function getTrend(cardId: string, count = 6) {
   const card = await prisma.card.findUnique({ where: { id: cardId } })
-  if (!card) return []
+  if (!card || card.type === 'debit' || card.statementCloseDay == null) return []
 
   const now = new Date()
   const refIso = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}-${String(now.getUTCDate()).padStart(2, '0')}`

@@ -10,6 +10,10 @@ export async function GET(
   const card = await prisma.card.findUnique({ where: { id } })
   if (!card) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  if (card.type === 'debit' || card.statementCloseDay == null) {
+    return NextResponse.json([])
+  }
+
   const { searchParams } = new URL(req.url)
   const count = parseInt(searchParams.get('count') || '6', 10)
 
