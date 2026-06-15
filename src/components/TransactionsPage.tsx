@@ -39,8 +39,11 @@ export default function TransactionsPage() {
   const [fCard, setFCard] = useState('');
   const [fCycle, setFCycle] = useState('');
   const [fCat, setFCat] = useState('');
-  const [fFrom, setFFrom] = useState('');
-  const [fTo, setFTo] = useState('');
+  const [fFrom, setFFrom] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+  });
+  const [fTo, setFTo] = useState(() => todayYMD());
 
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
