@@ -68,11 +68,7 @@ export async function GET(req: NextRequest) {
         adjDate = `${dueY}-${pad2(dueM)}-${pad2(dueD)}`
       }
 
-      const isPending = sb.paymentStatus === 'pending'
-      if (!isPending) {
-        if (from && adjDate < from) continue
-        if (to && adjDate > to) continue
-      }
+      // Statement adjustments always show regardless of date filter
 
       const allCardTxns = await prisma.transaction.findMany({
         where: { cardId: sb.cardId, date: { gte: sb.cycleStartDate, lte: sb.cycleEndDate } },
