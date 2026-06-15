@@ -49,8 +49,11 @@ export async function GET(req: NextRequest) {
 
   try {
     const stmtBalances = await prisma.statementBalance.findMany({
-      include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
+      include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true, paymentDueDay: true } } },
     })
+
+    const pad2 = (n: number) => String(n).padStart(2, '0')
+    const MONTH_NAMES = ['','January','February','March','April','May','June','July','August','September','October','November','December']
 
     for (const sb of stmtBalances) {
       if (cardId && sb.cardId !== cardId) continue
@@ -58,10 +61,19 @@ export async function GET(req: NextRequest) {
       const manualTotal = cycleTxns.reduce((s, t) => s + t.amountCents, 0)
       const adjustment = sb.statementTotalCents - manualTotal
       if (adjustment !== 0) {
+        let adjDate = sb.cycleEndDate
+        if (sb.card.paymentDueDay) {
+          const [closeY, closeM] = sb.cycleKey.split('-').map(Number)
+          let dueM = closeM + 1, dueY = closeY
+          if (dueM > 12) { dueM = 1; dueY++ }
+          const dim = new Date(dueY, dueM, 0).getDate()
+          const dueD = Math.min(sb.card.paymentDueDay, dim)
+          adjDate = `${dueY}-${pad2(dueM)}-${pad2(dueD)}`
+        }
         withCycle.push({
           id: `stmt-adj-${sb.id}`,
           cardId: sb.cardId,
-          date: sb.cycleEndDate,
+          date: adjDate,
           merchant: 'Statement Adjustment',
           amountCents: adjustment,
           category: 'Other',
@@ -72,8 +84,9 @@ export async function GET(req: NextRequest) {
           recurringOccurrenceDate: null,
           card: sb.card,
           cycleKey: sb.cycleKey,
-          cycleLabel: sb.cycleKey.split('-').map((v, i) => i === 1 ? ['','January','February','March','April','May','June','July','August','September','October','November','December'][Number(v)] : v).reverse().join(' '),
+          cycleLabel: `${MONTH_NAMES[Number(sb.cycleKey.split('-')[1])]} ${sb.cycleKey.split('-')[0]}`,
           isStatementAdjustment: true,
+          isPending: true,
           createdAt: sb.createdAt,
           updatedAt: sb.updatedAt,
         } as typeof withCycle[0])

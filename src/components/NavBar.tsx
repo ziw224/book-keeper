@@ -293,7 +293,7 @@ export default function NavBar() {
                     </div>
                     <div className="rounded-lg bg-slate-50 p-2.5">
                       <p className="text-[10px] font-semibold text-slate-400">Due day</p>
-                      <p className="text-sm font-bold text-slate-950">—</p>
+                      <p className="text-sm font-bold text-slate-950">{(card as Card & { paymentDueDay?: number | null }).paymentDueDay ?? '—'}</p>
                     </div>
                   </div>
                 </div>

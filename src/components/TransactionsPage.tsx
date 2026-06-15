@@ -17,6 +17,7 @@ interface Txn {
   category: string; notes?: string | null; cycleKey: string | null; cycleLabel: string | null;
   recurringRuleId?: string | null; isRecurringGenerated?: boolean;
   isStatementAdjustment?: boolean;
+  isPending?: boolean;
   card: { id: string; name: string; type: string; statementCloseDay: number | null };
 }
 type SortKey = 'date' | 'amt' | 'cat';
@@ -642,9 +643,10 @@ export default function TransactionsPage() {
   const hasDebit = useMemo(() => cards.some(c => c.type === 'debit'), [cards]);
   const creditTxns = useMemo(() => sorted.filter(t => t.card.type === 'credit'), [sorted]);
   const debitTxns = useMemo(() => sorted.filter(t => t.card.type === 'debit'), [sorted]);
-  const net = useMemo(() => sorted.reduce((s, t) => s + t.amountCents, 0), [sorted]);
-  const creditNet = useMemo(() => creditTxns.reduce((s, t) => s + t.amountCents, 0), [creditTxns]);
-  const debitNet = useMemo(() => debitTxns.reduce((s, t) => s + t.amountCents, 0), [debitTxns]);
+  const netOf = (txs: Txn[]) => txs.filter(t => !t.isPending).reduce((s, t) => s + t.amountCents, 0);
+  const net = useMemo(() => netOf(sorted), [sorted]);
+  const creditNet = useMemo(() => netOf(creditTxns), [creditTxns]);
+  const debitNet = useMemo(() => netOf(debitTxns), [debitTxns]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 1 ? -1 : 1);
@@ -786,7 +788,7 @@ export default function TransactionsPage() {
         <td className="px-5 py-3.5 text-sm font-semibold">
           {t.merchant}
           {t.recurringRuleId && <span className="ml-1.5 text-xs" title="Recurring">🔁</span>}
-          {t.isStatementAdjustment && <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">AUTO</span>}
+          {t.isPending && <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Pending</span>}
         </td>
         <td className="px-5 py-3.5 text-sm">
           <span className="mr-1">{categoryIcon(t.category)}</span>
