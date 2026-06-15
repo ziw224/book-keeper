@@ -1,11 +1,8 @@
-export type CycleKey = `${number}-${string}`;
+import type { StatementCycle } from '@/lib/cycle'
 
-export interface StatementCycle {
-  key: string;
-  label: string;
-  startDate: string;
-  endDate: string;
-}
+export type { StatementCycle }
+
+export type CycleKey = `${number}-${string}`;
 
 export interface SummaryBucket {
   name: string;

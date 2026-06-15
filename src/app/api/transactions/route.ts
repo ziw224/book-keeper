@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.format() }, { status: 400 })
   }
 
-  const { cardId, cycle, category, from, to, limit = 50, offset = 0, sort = 'date_desc' } = parsed.data
+  const { cardId, cycle, category, from, to } = parsed.data
 
   const where: Record<string, unknown> = {}
   if (cardId) where.cardId = cardId
@@ -33,28 +33,18 @@ export async function GET(req: NextRequest) {
     where.date = dateFilter
   }
 
-  const [sortField, sortDir] = sort!.split('_') as [string, 'asc' | 'desc']
-  const orderBy = sortField === 'amount'
-    ? { amountCents: sortDir }
-    : { date: sortDir }
-
-  const [transactions, total] = await Promise.all([
-    prisma.transaction.findMany({
-      where,
-      include: { card: { select: { id: true, name: true, statementCloseDay: true } } },
-      orderBy,
-      take: limit,
-      skip: offset,
-    }),
-    prisma.transaction.count({ where }),
-  ])
-
-  const withCycle = transactions.map((t) => {
-    const cycle = getCycleForDate(t.date, t.card.statementCloseDay)
-    return { ...t, cycleKey: cycle.key, cycleLabel: cycle.label }
+  const transactions = await prisma.transaction.findMany({
+    where,
+    include: { card: { select: { id: true, name: true, statementCloseDay: true } } },
+    orderBy: { date: 'desc' },
   })
 
-  return NextResponse.json({ data: withCycle, total, limit, offset })
+  const withCycle = transactions.map((t) => {
+    const c = getCycleForDate(t.date, t.card.statementCloseDay)
+    return { ...t, cycleKey: c.key, cycleLabel: c.label }
+  })
+
+  return NextResponse.json(withCycle)
 }
 
 export async function POST(req: NextRequest) {

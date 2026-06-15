@@ -1,9 +1,5 @@
 import { z } from 'zod'
-
-export const CATEGORIES = [
-  'Dining', 'Groceries', 'Transport', 'Shopping', 'Travel',
-  'Utilities', 'Entertainment', 'Health', 'Fees', 'Other',
-] as const
+import { SUGGESTED_CATEGORIES } from '@/lib/categories'
 
 const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
 

@@ -1,4 +1,9 @@
-import { StatementCycle } from '@/types'
+export interface StatementCycle {
+  key: string;
+  label: string;
+  startDate: string;
+  endDate: string;
+}
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',

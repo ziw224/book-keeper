@@ -32,6 +32,90 @@ Create a `.env` file (already included):
 DATABASE_URL="file:./dev.db"
 ```
 
+## How to test locally
+
+### 1. Install dependencies
+
+```bash
+npm install
+```
+
+### 2. Run migrations and seed data
+
+```bash
+npx prisma migrate dev      # creates SQLite DB + tables
+npm run db:seed              # inserts 2 cards (close days 15 and 28) and 17 transactions
+```
+
+To start fresh at any point:
+
+```bash
+npm run db:reset             # drops DB, re-migrates, re-seeds
+```
+
+### 3. Start the dev server
+
+```bash
+npm run dev                  # http://localhost:3000
+```
+
+### 4. Open Prisma Studio
+
+```bash
+npx prisma studio            # http://localhost:5555
+```
+
+Prisma Studio lets you browse and edit Card/Transaction rows directly. Useful for verifying seed data or manually inserting edge-case transactions.
+
+### 5. Manual QA checklist
+
+Run `npm run db:seed` first so the checks below have data to work with.
+
+**Close day 15 (Sapphire Reserve)**
+
+- [ ] Go to `/transactions`, filter by Sapphire Reserve + June 2026. Confirm 6 transactions appear (dates 5/16 through 6/15), including the Amazon refund.
+- [ ] Filter by July 2026. Confirm 4 transactions appear (dates 6/16 through 7/10). The 6/15 Netflix charge should NOT appear here.
+- [ ] On the Dashboard, select Sapphire Reserve + June 2026. Total should be $172.11.
+
+**Close day 31 (edge cases)**
+
+- [ ] In Prisma Studio or via `/cards`, create a test card with close day 31.
+- [ ] Add a transaction dated `2026-02-28`. On `/transactions`, confirm its cycle label is "February 2026" (close day 31 clamps to Feb 28).
+- [ ] Add a transaction dated `2026-03-01`. Confirm its cycle label is "March 2026" (the March cycle starts on Mar 1 because the Feb cycle ended on Feb 28).
+- [ ] Add a transaction dated `2024-02-29` (leap year). Confirm the cycle label is "February 2024".
+
+**Refunds**
+
+- [ ] On `/transactions`, find the Amazon refund (-$15.00) on 6/5. It should display in green.
+- [ ] On the Dashboard (Sapphire Reserve, June 2026), confirm Shopping category total is $17.99 (= $32.99 charge minus $15.00 refund), not $32.99.
+- [ ] Confirm the overall cycle total ($172.11) is reduced by the refund — without it the total would be $187.11.
+
+**Category and merchant totals**
+
+- [ ] On the Dashboard (Sapphire Reserve, June 2026), verify category breakdown sums to the total: Groceries $87.43 + Transport $45.20 + Shopping $17.99 + Entertainment $15.99 + Dining $5.50 = $172.11.
+- [ ] Verify merchant breakdown shows Amazon at $17.99 (net of refund, 2 transactions).
+
+**Card filters**
+
+- [ ] On `/transactions`, switch the card filter from Sapphire Reserve to Gold Card. Confirm only Gold Card transactions appear.
+- [ ] On the Dashboard, switch to Gold Card. Confirm the cycle dropdown updates to reflect close day 28 cycles (e.g., June 2026 = May 29 – Jun 28).
+- [ ] Clear the card filter on `/transactions`. Confirm transactions from both cards appear.
+
+**Empty states**
+
+- [ ] On `/transactions`, pick a cycle with no transactions. Confirm an empty state message appears instead of a broken table.
+- [ ] Delete all cards (via `/cards`). Confirm the Dashboard shows a "Welcome" prompt instead of empty charts.
+
+**Unit tests**
+
+```bash
+npm test                     # should report 24 passing tests
+```
+
+Covers cycle math (close day 15 boundaries, close day 31 in Feb, leap year 2024-02-29, Dec→Jan rollover) and money utilities (toCents, fromCents, formatUSD with negatives).
+
+---
+
 ## Architecture
 
 - **Next.js** (App Router) — single codebase for UI + API
