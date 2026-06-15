@@ -646,7 +646,8 @@ export default function TransactionsPage() {
   const hasDebit = useMemo(() => cards.some(c => c.type === 'debit'), [cards]);
   const creditTxns = useMemo(() => sorted.filter(t => t.card.type === 'credit'), [sorted]);
   const debitTxns = useMemo(() => sorted.filter(t => t.card.type === 'debit'), [sorted]);
-  const netOf = (txs: Txn[]) => txs.filter(t => !t.isPending).reduce((s, t) => s + t.amountCents, 0);
+  const countsInNet = (t: Txn) => !(t.isStatementAdjustment && (!t.paymentStatus || t.paymentStatus === 'pending'));
+  const netOf = (txs: Txn[]) => txs.filter(countsInNet).reduce((s, t) => s + t.amountCents, 0);
   const net = useMemo(() => netOf(sorted), [sorted]);
   const creditNet = useMemo(() => netOf(creditTxns), [creditTxns]);
   const debitNet = useMemo(() => netOf(debitTxns), [debitTxns]);
