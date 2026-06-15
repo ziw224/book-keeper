@@ -180,7 +180,7 @@ export default function TransactionsPage() {
           <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">{periodLabel(t)}</span>
         </td>
         <td className={`${tdCls} text-right ${t.amountCents < 0 ? 'text-emerald-600' : 'text-neutral-900'}`}>{formatUSD(t.amountCents)}</td>
-        <td className={`${tdCls} truncate text-neutral-400`}>{t.notes || ''}</td>
+        <td className={`${tdCls} text-neutral-400 break-words`}>{t.notes || ''}</td>
         <td className={`${tdCls} text-right`}>
           <button onClick={() => openEdit(t)} aria-label="Edit" className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"><Pencil className="h-4 w-4" /></button>
           <button onClick={() => setPending(t.id)} aria-label="Delete" className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"><Trash2 className="h-4 w-4" /></button>
@@ -193,13 +193,13 @@ export default function TransactionsPage() {
     return (
       <table className="w-full min-w-[640px] border-collapse table-fixed">
         <colgroup>
-          <col className="w-[9%]" />
-          <col className="w-[18%]" />
+          <col className="w-[8%]" />
           <col className="w-[14%]" />
-          <col className="w-[11%]" />
           <col className="w-[12%]" />
-          <col className="w-[18%]" />
-          <col className="w-16" />
+          <col className="w-[9%]" />
+          <col className="w-[10%]" />
+          <col className="w-[30%]" />
+          <col className="w-14" />
         </colgroup>
         <thead>
           <tr>
