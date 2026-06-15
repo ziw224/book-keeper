@@ -86,10 +86,14 @@ function Dropdown({ value, label, options, onChange, icon: Icon, disabled, place
 
 /* ── Category dropdown with search ─────────────────────── */
 
-function CategoryDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function CategoryDropdown({ selected, onChange }: { selected: string[]; onChange: (v: string[]) => void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+
+  const allIds = SUGGESTED_CATEGORIES as unknown as string[];
+  const allSelected = allIds.length > 0 && allIds.every(id => selected.includes(id));
+  const noneSelected = selected.length === 0;
 
   useEffect(() => {
     if (!open) return;
@@ -100,12 +104,25 @@ function CategoryDropdown({ value, onChange }: { value: string; onChange: (v: st
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
   }, [open]);
 
-  const allCats = [{ value: '', label: 'All categories' }, ...SUGGESTED_CATEGORIES.map(c => ({ value: c, label: c }))];
-  const filtered = allCats.filter(c => c.label.toLowerCase().includes(query.toLowerCase()));
-  const displayLabel = value || 'All categories';
+  function toggleAll() {
+    if (allSelected) onChange([]);
+    else onChange([...allIds]);
+  }
+
+  function toggleOne(id: string) {
+    if (selected.includes(id)) onChange(selected.filter(s => s !== id));
+    else onChange([...selected, id]);
+  }
+
+  const filtered = allIds.filter(c => c.toLowerCase().includes(query.toLowerCase()));
+
+  const displayLabel = allSelected ? 'All categories'
+    : noneSelected ? 'No categories selected'
+    : selected.length <= 2 ? selected.join(', ')
+    : `${selected.length} categories`;
 
   return (
-    <div ref={ref} className="relative min-w-[200px]">
+    <div ref={ref} className="relative min-w-[220px]">
       <button
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
@@ -115,8 +132,7 @@ function CategoryDropdown({ value, onChange }: { value: string; onChange: (v: st
       >
         <span className="flex min-w-0 items-center gap-2">
           <Tag className="h-4 w-4 shrink-0 text-slate-500" />
-          {value && <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: categoryColor(value) }} />}
-          <span className="truncate">{displayLabel}</span>
+          <span className={`truncate ${noneSelected ? 'text-slate-400' : ''}`}>{displayLabel}</span>
         </span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
@@ -133,19 +149,33 @@ function CategoryDropdown({ value, onChange }: { value: string; onChange: (v: st
             />
           </div>
           <div className="max-h-72 overflow-auto p-1">
-            {filtered.map(c => {
-              const selected = value === c.value;
+            {/* All categories toggle */}
+            <button
+              onClick={toggleAll}
+              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${allSelected ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
+            >
+              <span className={`flex h-4 w-4 items-center justify-center rounded border text-white ${allSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white'}`}>
+                {allSelected && <Check className="h-3 w-3" />}
+              </span>
+              <Tag className="h-3.5 w-3.5 text-slate-400" />
+              <span>All categories</span>
+            </button>
+
+            <div className="my-1 border-t border-slate-100" />
+
+            {filtered.map(cat => {
+              const checked = selected.includes(cat);
               return (
                 <button
-                  key={c.value}
-                  onClick={() => { onChange(c.value); setOpen(false); setQuery(''); }}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${selected ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
+                  key={cat}
+                  onClick={() => toggleOne(cat)}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${checked ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
                 >
-                  <span className={`flex h-4 w-4 items-center justify-center rounded border text-white ${selected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white'}`}>
-                    {selected && <Check className="h-3 w-3" />}
+                  <span className={`flex h-4 w-4 items-center justify-center rounded border text-white ${checked ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white'}`}>
+                    {checked && <Check className="h-3 w-3" />}
                   </span>
-                  {c.value ? <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ background: categoryColor(c.value) }} /> : <Tag className="h-3.5 w-3.5 text-slate-400" />}
-                  <span>{c.label}</span>
+                  <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ background: categoryColor(cat) }} />
+                  <span>{cat}</span>
                 </button>
               );
             })}
@@ -167,7 +197,7 @@ export default function TransactionsPage() {
 
   const [fCard, setFCard] = useState('');
   const [fCycle, setFCycle] = useState('');
-  const [fCat, setFCat] = useState('');
+  const [fCats, setFCats] = useState<string[]>([...SUGGESTED_CATEGORIES]);
   const [fFrom, setFFrom] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -217,7 +247,6 @@ export default function TransactionsPage() {
     const params = new URLSearchParams();
     if (fCard) params.set('cardId', fCard);
     if (fCard && fCycle && !selectedCardIsDebit) params.set('cycle', fCycle);
-    if (fCat) params.set('category', fCat);
     if (fFrom) params.set('from', fFrom);
     if (fTo) params.set('to', fTo);
     setLoading(true);
@@ -225,14 +254,20 @@ export default function TransactionsPage() {
       .then(d => { setTxns(d); setError(null); })
       .catch(() => setError('Could not load transactions.'))
       .finally(() => setLoading(false));
-  }, [fCard, fCycle, fCat, fFrom, fTo, selectedCardIsDebit]);
+  }, [fCard, fCycle, fFrom, fTo, selectedCardIsDebit]);
 
   useEffect(() => { fetchTxns(); }, [fetchTxns]);
 
-  const sorted = useMemo(() => [...txns].sort((a, b) => {
-    const x = sortKey === 'date' ? a.date.localeCompare(b.date) : a.amountCents - b.amountCents;
-    return x * sortDir;
-  }), [txns, sortKey, sortDir]);
+  const allCatsSelected = SUGGESTED_CATEGORIES.length > 0 && (SUGGESTED_CATEGORIES as unknown as string[]).every(c => fCats.includes(c));
+  const noCatsSelected = fCats.length === 0;
+
+  const sorted = useMemo(() => {
+    const filtered = noCatsSelected ? [] : allCatsSelected ? txns : txns.filter(t => fCats.includes(t.category));
+    return [...filtered].sort((a, b) => {
+      const x = sortKey === 'date' ? a.date.localeCompare(b.date) : a.amountCents - b.amountCents;
+      return x * sortDir;
+    });
+  }, [txns, sortKey, sortDir, fCats, allCatsSelected, noCatsSelected]);
 
   const hasDebit = useMemo(() => cards.some(c => c.type === 'debit'), [cards]);
   const creditTxns = useMemo(() => sorted.filter(t => t.card.type === 'credit'), [sorted]);
@@ -379,7 +414,7 @@ export default function TransactionsPage() {
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">No transactions match these filters.</td></tr>
+            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">{noCatsSelected ? 'No categories selected.' : 'No transactions match these filters.'}</td></tr>
           ) : rows.map(renderRow)}
         </tbody>
       </table>
@@ -445,7 +480,7 @@ export default function TransactionsPage() {
             disabled={!fCard || selectedCardIsDebit}
           />
 
-          <CategoryDropdown value={fCat} onChange={setFCat} />
+          <CategoryDropdown selected={fCats} onChange={setFCats} />
 
           <div className="flex items-center gap-3">
             <input type="date" value={fFrom} onChange={e => setFFrom(e.target.value)} className={dateCls} aria-label="From date" />
