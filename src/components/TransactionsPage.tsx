@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef } from 'react';
-import { ListChecks, Plus, ArrowUp, ArrowDown, Pencil, Trash2, ChevronDown, ChevronRight, Check, Keyboard, X } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
+import { ListChecks, Plus, ArrowUp, ArrowDown, Pencil, Trash2, ChevronDown, ChevronRight, Check, Keyboard, X, Calendar, Tag, Search } from 'lucide-react';
 import { formatUSD, toCents } from '@/lib/money';
 import { SUGGESTED_CATEGORIES, categoryColor } from '@/lib/categories';
 import type { StatementCycle } from '@/lib/cycle';
@@ -16,7 +16,7 @@ interface Txn {
 }
 type SortKey = 'date' | 'amt';
 
-async function api<T>(url: string, init: RequestInit = {}): Promise<T> {
+async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(url, { headers: init.body ? { 'Content-Type': 'application/json' } : undefined, ...init });
   if (!res.ok) { let msg = `Request failed (${res.status})`; try { const b = await res.json(); if (b?.error) msg = typeof b.error === 'string' ? b.error : JSON.stringify(b.error); } catch {} throw new Error(msg); }
   return res.status === 204 ? (undefined as T) : res.json();
@@ -28,6 +28,135 @@ function calendarMonth(dateStr: string) {
   const [, m] = dateStr.split('-').map(Number);
   return MONTHS[m - 1];
 }
+
+/* ── Reusable dropdown ────────────────────────────────────── */
+
+function Dropdown({ value, label, options, onChange, icon: Icon, disabled, placeholder }: {
+  value: string; label: string; options: { value: string; label: string }[];
+  onChange: (v: string) => void; icon: React.ElementType; disabled?: boolean; placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function esc(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative min-w-[180px]">
+      <button
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+        aria-expanded={open}
+        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+          disabled ? 'opacity-40 cursor-not-allowed' :
+          open ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
+        }`}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+          <span className="truncate">{label || placeholder}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+8px)] z-50 max-h-72 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+          {options.map(o => (
+            <button
+              key={o.value}
+              onClick={() => { onChange(o.value); setOpen(false); }}
+              className={`flex w-full cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 text-sm transition ${
+                value === o.value ? 'font-semibold text-indigo-600' : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <span>{o.label}</span>
+              {value === o.value && <Check className="h-4 w-4 text-indigo-600" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Category dropdown with search ─────────────────────── */
+
+function CategoryDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function esc(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  const allCats = [{ value: '', label: 'All categories' }, ...SUGGESTED_CATEGORIES.map(c => ({ value: c, label: c }))];
+  const filtered = allCats.filter(c => c.label.toLowerCase().includes(query.toLowerCase()));
+  const displayLabel = value || 'All categories';
+
+  return (
+    <div ref={ref} className="relative min-w-[200px]">
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+          open ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
+        }`}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <Tag className="h-4 w-4 shrink-0 text-slate-500" />
+          {value && <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: categoryColor(value) }} />}
+          <span className="truncate">{displayLabel}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2.5">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search categories..."
+              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              autoFocus
+            />
+          </div>
+          <div className="max-h-72 overflow-auto p-1">
+            {filtered.map(c => {
+              const selected = value === c.value;
+              return (
+                <button
+                  key={c.value}
+                  onClick={() => { onChange(c.value); setOpen(false); setQuery(''); }}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${selected ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
+                >
+                  <span className={`flex h-4 w-4 items-center justify-center rounded border text-white ${selected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white'}`}>
+                    {selected && <Check className="h-3 w-3" />}
+                  </span>
+                  {c.value ? <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ background: categoryColor(c.value) }} /> : <Tag className="h-3.5 w-3.5 text-slate-400" />}
+                  <span>{c.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Main component ──────────────────────────────────────── */
 
 export default function TransactionsPage() {
   const [cards, setCards] = useState<Card[]>([]);
@@ -71,7 +200,7 @@ export default function TransactionsPage() {
     toastTimer.current = setTimeout(() => setToast(null), 2500);
   }
 
-  useEffect(() => { api<Card[]>('/api/cards').then(setCards).catch(() => setError('Could not load cards.')); }, []);
+  useEffect(() => { apiFetch<Card[]>('/api/cards').then(setCards).catch(() => setError('Could not load cards.')); }, []);
 
   const selectedCardIsDebit = useMemo(() => {
     if (!fCard) return false;
@@ -81,10 +210,10 @@ export default function TransactionsPage() {
   useEffect(() => {
     setFCycle('');
     if (!fCard || selectedCardIsDebit) { setCycles([]); return; }
-    api<StatementCycle[]>(`/api/cards/${fCard}/cycles?count=12`).then(setCycles).catch(() => setCycles([]));
+    apiFetch<StatementCycle[]>(`/api/cards/${fCard}/cycles?count=12`).then(setCycles).catch(() => setCycles([]));
   }, [fCard, selectedCardIsDebit]);
 
-  useEffect(() => {
+  const fetchTxns = useCallback(() => {
     const params = new URLSearchParams();
     if (fCard) params.set('cardId', fCard);
     if (fCard && fCycle && !selectedCardIsDebit) params.set('cycle', fCycle);
@@ -92,11 +221,13 @@ export default function TransactionsPage() {
     if (fFrom) params.set('from', fFrom);
     if (fTo) params.set('to', fTo);
     setLoading(true);
-    api<Txn[]>(`/api/transactions?${params.toString()}`)
+    apiFetch<Txn[]>(`/api/transactions?${params.toString()}`)
       .then(d => { setTxns(d); setError(null); })
       .catch(() => setError('Could not load transactions.'))
       .finally(() => setLoading(false));
   }, [fCard, fCycle, fCat, fFrom, fTo, selectedCardIsDebit]);
+
+  useEffect(() => { fetchTxns(); }, [fetchTxns]);
 
   const sorted = useMemo(() => [...txns].sort((a, b) => {
     const x = sortKey === 'date' ? a.date.localeCompare(b.date) : a.amountCents - b.amountCents;
@@ -115,20 +246,9 @@ export default function TransactionsPage() {
     else { setSortKey(key); setSortDir(-1); }
   }
 
-  function refresh() {
-    const params = new URLSearchParams({
-      ...(fCard && { cardId: fCard }),
-      ...(fCard && fCycle && !selectedCardIsDebit && { cycle: fCycle }),
-      ...(fCat && { category: fCat }),
-      ...(fFrom && { from: fFrom }),
-      ...(fTo && { to: fTo }),
-    });
-    api<Txn[]>(`/api/transactions?${params.toString()}`).then(setTxns).catch(() => setError('Could not refresh.'));
-  }
-
   async function showAllDates() {
     try {
-      const all = await api<Txn[]>('/api/transactions');
+      const all = await apiFetch<Txn[]>('/api/transactions');
       if (all.length === 0) return;
       const dates = all.map(t => t.date).sort();
       setFFrom(dates[0]);
@@ -162,11 +282,11 @@ export default function TransactionsPage() {
     setSaving(true);
     try {
       const body = JSON.stringify({ cardId: fmCard, date: fmDate, merchant: fmMerchant.trim(), amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null });
-      if (editing) await api(`/api/transactions/${editing}`, { method: 'PATCH', body });
-      else await api('/api/transactions', { method: 'POST', body });
+      if (editing) await apiFetch(`/api/transactions/${editing}`, { method: 'PATCH', body });
+      else await apiFetch('/api/transactions', { method: 'POST', body });
       setShowForm(false);
       showToast(`Transaction ${editing ? 'updated' : 'saved'} — ${fmMerchant.trim()} ${formatUSD(amountCents)}`);
-      refresh();
+      fetchTxns();
     } catch (e) { setFormErr(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setSaving(false); }
   }
@@ -180,7 +300,7 @@ export default function TransactionsPage() {
   }
 
   async function confirmDelete(id: string) {
-    try { await api(`/api/transactions/${id}`, { method: 'DELETE' }); setPending(null); showToast('Transaction deleted'); refresh(); }
+    try { await apiFetch(`/api/transactions/${id}`, { method: 'DELETE' }); setPending(null); showToast('Transaction deleted'); fetchTxns(); }
     catch { setError('Could not delete.'); }
   }
 
@@ -188,6 +308,12 @@ export default function TransactionsPage() {
     if (t.cycleLabel) return t.cycleLabel.replace(/ 20\d\d$/, '');
     return calendarMonth(t.date);
   }
+
+  // Cycle dropdown options
+  const cycleOptions = [
+    { value: '', label: selectedCardIsDebit ? 'N/A (debit)' : fCard ? 'All cycles' : 'Cycle (pick a card)' },
+    ...cycles.map(c => ({ value: c.key, label: c.label })),
+  ];
 
   function renderRow(t: Txn) {
     if (t.id === pending) {
@@ -214,7 +340,7 @@ export default function TransactionsPage() {
           {t.category}
         </td>
         <td className="px-5 py-3.5 text-sm">
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">{periodLabel(t)}</span>
+          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">{periodLabel(t)}</span>
         </td>
         <td className={`px-5 py-3.5 text-sm text-right font-bold ${t.amountCents < 0 ? 'text-emerald-600' : ''}`}>{formatUSD(t.amountCents)}</td>
         <td className="px-5 py-3.5 text-sm text-slate-500 break-words">{t.notes || ''}</td>
@@ -263,34 +389,32 @@ export default function TransactionsPage() {
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <ListChecks className="h-6 w-6 text-slate-500" />
-            <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
+            <ListChecks className="h-7 w-7 text-slate-500" />
+            <h1 className="text-4xl font-bold tracking-tight">Transactions</h1>
           </div>
-          <p className="mt-2 text-slate-500">Review spending by card, cycle, category, and date range.</p>
+          <p className="mt-3 text-lg text-slate-500">Review spending by card, cycle, category, and date range.</p>
         </div>
         <button
           onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50 transition"
+          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-5 py-3 text-sm font-bold text-indigo-600 shadow-sm hover:bg-indigo-50 transition"
         >
           <Plus className="h-4 w-4" /> Add Transaction
         </button>
       </div>
 
       {/* Card tabs */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
-        <div className="flex flex-wrap gap-1">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex overflow-x-auto p-2">
           <button
             onClick={() => setFCard('')}
-            className={`relative rounded-xl px-4 py-3 text-sm font-semibold transition ${!fCard ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
+            className={`group relative flex min-w-fit items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition ${!fCard ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
           >
-            <span className="flex items-center gap-2">
-              {!fCard && <Check className="h-4 w-4" />}
-              All Cards
-              <span className="text-xs font-medium text-slate-400">({sorted.length})</span>
-            </span>
+            {!fCard && <Check className="h-4 w-4" />}
+            All Cards
+            <span className="text-slate-400">({txns.length})</span>
           </button>
           {cards.map(c => {
             const active = fCard === c.id;
@@ -298,34 +422,41 @@ export default function TransactionsPage() {
               <button
                 key={c.id}
                 onClick={() => setFCard(c.id)}
-                className={`relative rounded-xl px-4 py-3 text-sm font-semibold transition ${active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
+                className={`group relative flex min-w-fit items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition ${active ? 'bg-indigo-50 text-indigo-600' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
               >
-                <span className="flex items-center gap-2">
-                  {active && <Check className="h-4 w-4" />}
-                  {c.name}
-                  <span className="text-xs font-medium text-slate-400">•••• {c.last4}</span>
-                </span>
+                {active && <Check className="h-4 w-4" />}
+                {c.name}
+                <span className="font-medium text-slate-400">•••• {c.last4}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Filters row */}
-      <div className="flex flex-wrap items-center gap-3">
-        <select value={fCycle} onChange={(e) => setFCycle(e.target.value)} disabled={!fCard || selectedCardIsDebit} title={selectedCardIsDebit ? 'Debit cards have no cycle' : !fCard ? 'Select a card' : ''} className={`${selCls} disabled:opacity-40`}>
-          <option value="">{selectedCardIsDebit ? 'N/A (debit)' : fCard ? 'All cycles' : 'Cycle (pick a card)'}</option>
-          {cycles.map(cy => <option key={cy.key} value={cy.key}>{cy.label}</option>)}
-        </select>
-        <select value={fCat} onChange={(e) => setFCat(e.target.value)} className={selCls}>
-          <option value="">All categories</option>
-          {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className={selCls} aria-label="From date" />
-        <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className={selCls} aria-label="To date" />
-        <button onClick={showAllDates} className={btnCls}>All time</button>
-        <button onClick={showThisMonth} className={btnCls}>This month</button>
-      </div>
+      {/* Filter bar */}
+      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <Dropdown
+            value={fCycle}
+            label={cycles.find(c => c.key === fCycle)?.label || cycleOptions[0].label}
+            options={cycleOptions}
+            onChange={setFCycle}
+            icon={Calendar}
+            disabled={!fCard || selectedCardIsDebit}
+          />
+
+          <CategoryDropdown value={fCat} onChange={setFCat} />
+
+          <div className="flex items-center gap-3">
+            <input type="date" value={fFrom} onChange={e => setFFrom(e.target.value)} className={dateCls} aria-label="From date" />
+            <span className="text-slate-400">–</span>
+            <input type="date" value={fTo} onChange={e => setFTo(e.target.value)} className={dateCls} aria-label="To date" />
+          </div>
+
+          <button onClick={showAllDates} className={quickBtnCls}>All time</button>
+          <button onClick={showThisMonth} className={quickBtnCls}>This month</button>
+        </div>
+      </section>
 
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
@@ -373,12 +504,12 @@ export default function TransactionsPage() {
         </div>
       )}
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm font-medium text-slate-500">
         {loading ? 'Loading…' : `Showing ${sorted.length} transaction${sorted.length === 1 ? '' : 's'} · ${formatUSD(net)} net`}
       </p>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-x-auto overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         {hasDebit && !fCard ? (
           <div>
             <div className="border-b border-slate-100 px-5 py-4">
@@ -403,7 +534,7 @@ export default function TransactionsPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed right-8 top-8 z-50 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-top-3">
+        <div className="fixed right-8 top-8 z-50 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl">
           <div className="rounded-full bg-emerald-100 p-1.5 text-emerald-600">
             <Check className="h-4 w-4" />
           </div>
@@ -417,8 +548,8 @@ export default function TransactionsPage() {
   );
 }
 
-const selCls = 'h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium shadow-sm outline-none transition hover:border-indigo-300 hover:shadow-md focus:border-indigo-400';
-const btnCls = 'h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold shadow-sm hover:bg-slate-50 transition';
+const dateCls = 'h-12 w-44 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold shadow-sm outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100';
+const quickBtnCls = 'h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold shadow-sm hover:bg-slate-50 transition';
 const fmInputCls = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100';
 const thCls = 'px-5 py-3 text-left text-sm font-semibold text-slate-500';
 
