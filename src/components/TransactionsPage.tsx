@@ -782,7 +782,7 @@ export default function TransactionsPage() {
     if (t.id === pending) {
       return (
         <tr key={t.id} className="border-b border-slate-100">
-          <td colSpan={7} className="px-5 py-3">
+          <td colSpan={8} className="px-5 py-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[13px]">Delete <span className="font-medium">{t.merchant}</span> ({formatUSD(t.amountCents)})?</span>
               <div className="flex gap-2">
@@ -805,6 +805,9 @@ export default function TransactionsPage() {
               ? <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">Paid{t.paidDate ? ` ${t.paidDate.slice(5)}` : ''}</span>
               : <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Pending</span>
           )}
+        </td>
+        <td className="px-5 py-3.5 text-xs text-slate-600 truncate">
+          {t.card.name} <span className="text-slate-400">•••• {(t.card as Card & { last4?: string }).last4}</span>
         </td>
         <td className="px-5 py-3.5 text-sm">
           <span className="mr-1">{categoryIcon(t.category)}</span>
@@ -839,18 +842,20 @@ export default function TransactionsPage() {
     return (
       <table className="w-full min-w-[720px] border-collapse table-fixed">
         <colgroup>
+          <col className="w-[7%]" />
+          <col className="w-[13%]" />
+          <col className="w-[12%]" />
+          <col className="w-[12%]" />
           <col className="w-[8%]" />
-          <col className="w-[14%]" />
-          <col className="w-[15%]" />
           <col className="w-[9%]" />
-          <col className="w-[10%]" />
-          <col className="w-[27%]" />
+          <col className="w-[23%]" />
           <col className="w-14" />
         </colgroup>
         <thead>
           <tr className="border-b border-slate-100">
             <SortTh onClick={() => toggleSort('date')} active={sortKey === 'date'} dir={sortDir}>Date</SortTh>
             <th className={thCls}>Merchant</th>
+            <th className={thCls}>Card</th>
             <SortTh onClick={() => toggleSort('cat')} active={sortKey === 'cat'} dir={sortDir}>Category</SortTh>
             <th className={thCls}>Period</th>
             <SortTh onClick={() => toggleSort('amt')} active={sortKey === 'amt'} dir={sortDir} align="right">Amount</SortTh>
@@ -860,7 +865,7 @@ export default function TransactionsPage() {
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">{fCats.length === 0 ? 'No categories selected.' : 'No transactions match these filters.'}</td></tr>
+            <tr><td colSpan={8} className="py-12 text-center text-sm text-slate-400">{fCats.length === 0 ? 'No categories selected.' : 'No transactions match these filters.'}</td></tr>
           ) : rows.map(renderRow)}
         </tbody>
       </table>

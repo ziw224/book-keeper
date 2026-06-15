@@ -18,7 +18,7 @@ export async function GET(
   const { id } = await params
   const txn = await prisma.transaction.findUnique({
     where: { id },
-    include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
+    include: { card: { select: { id: true, name: true, last4: true, type: true, statementCloseDay: true } } },
   })
   if (!txn) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ ...txn, ...deriveCycle(txn) })
@@ -38,7 +38,7 @@ export async function PATCH(
     const txn = await prisma.transaction.update({
       where: { id },
       data: parsed.data,
-      include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
+      include: { card: { select: { id: true, name: true, last4: true, type: true, statementCloseDay: true } } },
     })
     return NextResponse.json({ ...txn, ...deriveCycle(txn) })
   } catch {

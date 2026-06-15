@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
 
   const transactions = await prisma.transaction.findMany({
     where,
-    include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
+    include: { card: { select: { id: true, name: true, last4: true, type: true, statementCloseDay: true } } },
     orderBy: { date: 'desc' },
   })
 
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const stmtBalances = await prisma.statementBalance.findMany({
-      include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true, paymentDueDay: true } } },
+      include: { card: { select: { id: true, name: true, last4: true, type: true, statementCloseDay: true, paymentDueDay: true } } },
     })
 
     const pad2 = (n: number) => String(n).padStart(2, '0')
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       isRecurringGenerated: false,
       recurringOccurrenceDate: recurringRuleId ? parsed.data.date : null,
     },
-    include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
+    include: { card: { select: { id: true, name: true, last4: true, type: true, statementCloseDay: true } } },
   })
 
   if (card.type === 'credit' && card.statementCloseDay != null) {
