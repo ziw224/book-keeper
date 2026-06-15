@@ -2,7 +2,7 @@
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { formatUSD } from '@/lib/money'
-import { categoryColor } from '@/lib/categories'
+import { categoryColor, categoryIcon } from '@/lib/categories'
 
 interface Bucket { name: string; total: number; count: number }
 
@@ -55,7 +55,7 @@ export default function CategoryPie({ data }: { data: Bucket[] }) {
           {chartData.map(d => (
             <div key={d.name} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 text-sm">
               <span className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded-sm inline-block" style={{ background: categoryColor(d.name) }} />
+                <span className="text-sm">{categoryIcon(d.name)}</span>
                 <span className="font-medium text-slate-700">{d.name}</span>
               </span>
               <span className="font-semibold">{formatUSD(d.value)}</span>

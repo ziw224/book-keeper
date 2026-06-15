@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { ListChecks, Plus, ArrowUp, ArrowDown, Pencil, Trash2, ChevronDown, ChevronRight, Check, Keyboard, X, Calendar, Tag, Search } from 'lucide-react';
 import { formatUSD, toCents } from '@/lib/money';
-import { SUGGESTED_CATEGORIES, categoryColor } from '@/lib/categories';
+import { SUGGESTED_CATEGORIES, categoryColor, categoryIcon } from '@/lib/categories';
 import type { StatementCycle } from '@/lib/cycle';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -251,7 +251,7 @@ function CategoryDropdown({ selected, onChange }: { selected: string[]; onChange
                   <span className={`flex h-4 w-4 items-center justify-center rounded border text-white ${checked ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white'}`}>
                     {checked && <Check className="h-3 w-3" />}
                   </span>
-                  <span className="h-3.5 w-3.5 shrink-0 rounded-full" style={{ background: categoryColor(cat) }} />
+                  <span className="text-sm">{categoryIcon(cat)}</span>
                   <span>{cat}</span>
                 </button>
               );
@@ -452,7 +452,7 @@ export default function TransactionsPage() {
         <td className="px-5 py-3.5 text-sm font-medium text-slate-500">{t.date.slice(5)}</td>
         <td className="px-5 py-3.5 text-sm font-semibold">{t.merchant}</td>
         <td className="px-5 py-3.5 text-sm">
-          <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-[-1px]" style={{ background: categoryColor(t.category) }} />
+          <span className="mr-1">{categoryIcon(t.category)}</span>
           {t.category}
         </td>
         <td className="px-5 py-3.5 text-sm">
@@ -606,7 +606,7 @@ export default function TransactionsPage() {
                   placeholder="Select category…"
                   options={SUGGESTED_CATEGORIES.map(c => ({
                     value: c, label: c,
-                    icon: <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: categoryColor(c) }} />,
+                    icon: <span className="text-sm">{categoryIcon(c)}</span>,
                   }))}
                   onChange={setFmCat}
                 />

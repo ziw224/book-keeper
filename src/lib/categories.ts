@@ -34,3 +34,20 @@ const CATEGORY_COLORS: Record<string, string> = {
 export function categoryColor(name: string): string {
   return CATEGORY_COLORS[name] ?? '#888780';
 }
+
+const CATEGORY_ICONS: Record<string, string> = {
+  Dining: '🍽️',
+  Groceries: '🛒',
+  Transport: '🚗',
+  Shopping: '🛍️',
+  Travel: '✈️',
+  Utilities: '💡',
+  Entertainment: '🎬',
+  Health: '💊',
+  Fees: '🏦',
+  Other: '📦',
+};
+
+export function categoryIcon(name: string): string {
+  return CATEGORY_ICONS[name] ?? '📦';
+}
