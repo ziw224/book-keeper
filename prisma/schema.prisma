@@ -16,6 +16,7 @@ model Card {
   statementCloseDay Int?
   transactions      Transaction[]
   recurringRules    RecurringRule[]
+  statementBalances StatementBalance[]
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 }
@@ -39,6 +40,22 @@ model Transaction {
   @@index([cardId, date])
   @@index([category])
   @@index([recurringRuleId])
+}
+
+model StatementBalance {
+  id                  String   @id @default(cuid())
+  cardId              String
+  card                Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cycleKey            String
+  cycleStartDate      String
+  cycleEndDate        String
+  statementTotalCents Int
+  notes               String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@unique([cardId, cycleKey])
+  @@index([cardId])
 }
 
 model RecurringRule {

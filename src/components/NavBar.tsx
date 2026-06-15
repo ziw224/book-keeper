@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Plus, User, WalletCards, Settings, LogOut, ChevronRight, CreditCard, X, CalendarDays, Trash2 } from 'lucide-react';
+import { Plus, User, WalletCards, Settings, LogOut, ChevronRight, CreditCard, X, CalendarDays, Trash2, ReceiptText } from 'lucide-react';
 import { getPaycheckRules, savePaycheckRules, type PaycheckRule } from '@/lib/importantDates';
+import { formatUSD, toCents } from '@/lib/money';
+import { listRecentCycles } from '@/lib/cycle';
 
 const navLinks = [
   { href: '/', label: 'Dashboard' },
@@ -20,11 +22,28 @@ interface Card {
   statementCloseDay: number | null;
 }
 
+interface StmtBalance {
+  id: string;
+  cardId: string;
+  cycleKey: string;
+  statementTotalCents: number;
+  manualTotal: number;
+  adjustment: number;
+  status: string;
+  card: { name: string; last4: string };
+}
+
 export default function NavBar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [datesOpen, setDatesOpen] = useState(false);
+  const [stmtOpen, setStmtOpen] = useState(false);
+  const [stmtBalances, setStmtBalances] = useState<StmtBalance[]>([]);
+  const [stCard, setStCard] = useState('');
+  const [stCycle, setStCycle] = useState('');
+  const [stAmount, setStAmount] = useState('');
+  const [stCycles, setStCycles] = useState<{ key: string; label: string }[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [paycheckRules, setPaycheckRules] = useState<PaycheckRule[]>([]);
   const [pcLabel, setPcLabel] = useState('Paycheck');
@@ -91,6 +110,25 @@ export default function NavBar() {
             >
               <CalendarDays className="h-4 w-4" />
               Dates
+            </button>
+
+            <button
+              onClick={() => {
+                setStmtOpen(true);
+                fetch('/api/cards').then(r => r.json()).then((c: Card[]) => {
+                  setCards(c);
+                  const credit = c.filter(x => x.type === 'credit');
+                  if (credit.length > 0 && !stCard) {
+                    setStCard(credit[0].id);
+                    if (credit[0].statementCloseDay) setStCycles(listRecentCycles(credit[0].statementCloseDay, 12).map(cy => ({ key: cy.key, label: cy.label })));
+                  }
+                }).catch(() => {});
+                fetch('/api/statements').then(r => r.json()).then(setStmtBalances).catch(() => {});
+              }}
+              className="inline-flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+            >
+              <ReceiptText className="h-4 w-4" />
+              Statements
             </button>
 
             <div ref={menuRef} className="relative">
@@ -324,6 +362,101 @@ export default function NavBar() {
             {/* Recurring transactions link */}
             <h3 className="mt-7 text-sm font-bold uppercase tracking-wide text-slate-500">Recurring Transactions</h3>
             <p className="mt-2 text-xs text-slate-400">Recurring transactions are managed when adding transactions with the recurring toggle.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Statements drawer */}
+      {stmtOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/30" onClick={() => setStmtOpen(false)}>
+          <div className="h-full w-full max-w-lg overflow-y-auto bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-6 flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight text-slate-950">Statement Balances</h2>
+                <p className="mt-1 text-sm text-slate-500">Enter statement totals to track unentered expenses</p>
+              </div>
+              <button onClick={() => setStmtOpen(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+            </div>
+
+            {/* Add statement balance */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 mb-6">
+              <p className="text-xs font-semibold text-slate-500">Add statement balance</p>
+              <div className="grid grid-cols-3 gap-2">
+                <label className="block">
+                  <span className="text-[10px] font-semibold text-slate-400">Card</span>
+                  <select value={stCard} onChange={e => {
+                    setStCard(e.target.value);
+                    const c = cards.find(x => x.id === e.target.value);
+                    if (c?.statementCloseDay) setStCycles(listRecentCycles(c.statementCloseDay, 12).map(cy => ({ key: cy.key, label: cy.label })));
+                    else setStCycles([]);
+                  }} className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none">
+                    <option value="">Select…</option>
+                    {cards.filter(c => c.type === 'credit').map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-semibold text-slate-400">Cycle</span>
+                  <select value={stCycle} onChange={e => setStCycle(e.target.value)} className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none">
+                    <option value="">Select…</option>
+                    {stCycles.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-semibold text-slate-400">Statement total</span>
+                  <input value={stAmount} onChange={e => setStAmount(e.target.value)} placeholder="-1200" className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none" />
+                </label>
+              </div>
+              <button onClick={async () => {
+                if (!stCard || !stCycle || !stAmount) return;
+                let cents: number;
+                try { cents = toCents(stAmount); } catch { return; }
+                await fetch('/api/statements', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ cardId: stCard, cycleKey: stCycle, statementTotalCents: cents }),
+                });
+                setStAmount('');
+                fetch('/api/statements').then(r => r.json()).then(setStmtBalances).catch(() => {});
+              }} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Save</button>
+            </div>
+
+            {/* Statement balances table */}
+            <div className="space-y-2">
+              {stmtBalances.map(sb => (
+                <div key={sb.id} className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">{sb.card.name} •••• {sb.card.last4}</p>
+                      <p className="text-xs text-slate-500">{sb.cycleKey}</p>
+                    </div>
+                    <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${sb.status === 'reconciled' ? 'bg-emerald-100 text-emerald-700' : sb.status === 'over-entered' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                      {sb.status}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-lg bg-slate-50 p-2">
+                      <p className="text-[10px] text-slate-400">Statement</p>
+                      <p className="font-bold">{formatUSD(sb.statementTotalCents)}</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2">
+                      <p className="text-[10px] text-slate-400">Entered</p>
+                      <p className="font-bold">{formatUSD(sb.manualTotal)}</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2">
+                      <p className="text-[10px] text-slate-400">Adjustment</p>
+                      <p className={`font-bold ${sb.adjustment < 0 ? 'text-red-600' : sb.adjustment > 0 ? 'text-emerald-600' : ''}`}>{formatUSD(sb.adjustment)}</p>
+                    </div>
+                  </div>
+                  <button onClick={async () => {
+                    await fetch(`/api/statements?id=${sb.id}`, { method: 'DELETE' });
+                    fetch('/api/statements').then(r => r.json()).then(setStmtBalances).catch(() => {});
+                  }} className="mt-2 text-xs text-red-500 hover:text-red-700">Remove</button>
+                </div>
+              ))}
+              {stmtBalances.length === 0 && (
+                <p className="py-6 text-center text-xs text-slate-400">No statement balances entered yet</p>
+              )}
+            </div>
           </div>
         </div>
       )}

@@ -16,6 +16,7 @@ interface Txn {
   id: string; cardId: string; date: string; merchant: string; amountCents: number;
   category: string; notes?: string | null; cycleKey: string | null; cycleLabel: string | null;
   recurringRuleId?: string | null; isRecurringGenerated?: boolean;
+  isStatementAdjustment?: boolean;
   card: { id: string; name: string; type: string; statementCloseDay: number | null };
 }
 type SortKey = 'date' | 'amt' | 'cat';
@@ -785,6 +786,7 @@ export default function TransactionsPage() {
         <td className="px-5 py-3.5 text-sm font-semibold">
           {t.merchant}
           {t.recurringRuleId && <span className="ml-1.5 text-xs" title="Recurring">🔁</span>}
+          {t.isStatementAdjustment && <span className="ml-1.5 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">AUTO</span>}
         </td>
         <td className="px-5 py-3.5 text-sm">
           <span className="mr-1">{categoryIcon(t.category)}</span>

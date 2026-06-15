@@ -42,10 +42,44 @@ export async function GET(req: NextRequest) {
   const withCycle = transactions.map((t) => {
     if (t.card.type === 'credit' && t.card.statementCloseDay != null) {
       const c = getCycleForDate(t.date, t.card.statementCloseDay)
-      return { ...t, cycleKey: c.key, cycleLabel: c.label }
+      return { ...t, cycleKey: c.key, cycleLabel: c.label, isStatementAdjustment: false }
     }
-    return { ...t, cycleKey: null, cycleLabel: null }
+    return { ...t, cycleKey: null, cycleLabel: null, isStatementAdjustment: false }
   })
+
+  const stmtBalances = await prisma.statementBalance.findMany({
+    include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
+  })
+
+  for (const sb of stmtBalances) {
+    if (cardId && sb.cardId !== cardId) continue
+    const cycleTxns = transactions.filter(t => t.cardId === sb.cardId && t.date >= sb.cycleStartDate && t.date <= sb.cycleEndDate)
+    const manualTotal = cycleTxns.reduce((s, t) => s + t.amountCents, 0)
+    const adjustment = sb.statementTotalCents - manualTotal
+    if (adjustment !== 0) {
+      withCycle.push({
+        id: `stmt-adj-${sb.id}`,
+        cardId: sb.cardId,
+        date: sb.cycleEndDate,
+        merchant: 'Statement Adjustment',
+        amountCents: adjustment,
+        category: 'Other',
+        notes: `Unentered ${sb.card.name} statement balance`,
+        recurringRuleId: null,
+        recurringRule: null,
+        isRecurringGenerated: false,
+        recurringOccurrenceDate: null,
+        card: sb.card,
+        cycleKey: sb.cycleKey,
+        cycleLabel: sb.cycleKey.split('-').map((v, i) => i === 1 ? ['','January','February','March','April','May','June','July','August','September','October','November','December'][Number(v)] : v).reverse().join(' '),
+        isStatementAdjustment: true,
+        createdAt: sb.createdAt,
+        updatedAt: sb.updatedAt,
+      } as typeof withCycle[0])
+    }
+  }
+
+  withCycle.sort((a, b) => b.date.localeCompare(a.date))
 
   return NextResponse.json(withCycle)
 }
