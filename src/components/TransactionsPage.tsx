@@ -304,7 +304,7 @@ function MerchantFilterDropdown({ value, onChange, merchants }: {
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
           <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2.5">
             <Search className="h-4 w-4 text-slate-400" />
             <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search merchants..." className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" autoFocus />
@@ -877,8 +877,8 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filter bar */}
-      <section className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
-        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
+      <section className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm overflow-visible">
+        <div className="flex flex-nowrap items-center gap-2">
           <Dropdown
             value={fCycle}
             label={cycles.find(c => c.key === fCycle)?.label || cycleOptions[0].label}
