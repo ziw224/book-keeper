@@ -172,8 +172,8 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
   const ref = useRef<HTMLDivElement>(null);
 
   const allIds = availableCategories;
-  const allSelected = selected.length === 0 || (allIds.length > 0 && allIds.every(id => selected.includes(id)));
-  const noneSelected = false;
+  const allSelected = allIds.length > 0 && allIds.length === selected.length && allIds.every(id => selected.includes(id));
+  const noneSelected = selected.length === 0;
 
   useEffect(() => {
     if (!open) return;
@@ -185,7 +185,8 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
   }, [open]);
 
   function toggleAll() {
-    onChange([...allIds]);
+    if (allSelected) onChange([]);
+    else onChange([...allIds]);
   }
 
   function toggleOne(id: string) {
@@ -195,9 +196,9 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
 
   const filtered = allIds.filter(c => c.toLowerCase().includes(query.toLowerCase()));
 
-  const displayLabel = allSelected ? 'All categories'
-    : noneSelected ? 'No categories selected'
-    : selected.length <= 2 ? selected.join(', ')
+  const displayLabel = noneSelected ? 'No categories selected'
+    : allSelected ? `All categories (${allIds.length})`
+    : selected.length === 1 ? selected[0]
     : `${selected.length} categories`;
 
   return (
@@ -243,7 +244,7 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
             <div className="my-1 border-t border-slate-100" />
 
             {filtered.map(cat => {
-              const checked = allSelected || selected.includes(cat);
+              const checked = selected.includes(cat);
               return (
                 <button
                   key={cat}
@@ -475,13 +476,21 @@ export default function TransactionsPage() {
     setFCats(prev => {
       const valid = prev.filter(c => availableCategories.includes(c));
       if (valid.length === prev.length) return prev;
-      return valid.length > 0 ? valid : availableCategories;
+      return valid;
     });
+  }, [availableCategories]);
+
+  const catsInitialized = useRef(false);
+  useEffect(() => {
+    if (!catsInitialized.current && availableCategories.length > 0) {
+      catsInitialized.current = true;
+      setFCats([...availableCategories]);
+    }
   }, [availableCategories]);
 
   const allCatsSelected = availableCategories.length > 0 && availableCategories.every(c => fCats.includes(c));
   const sorted = useMemo(() => {
-    const filtered = (fCats.length === 0 || allCatsSelected) ? txns : txns.filter(t => fCats.includes(t.category));
+    const filtered = fCats.length === 0 ? [] : allCatsSelected ? txns : txns.filter(t => fCats.includes(t.category));
     return [...filtered].sort((a, b) => {
       const x = sortKey === 'date' ? a.date.localeCompare(b.date) : sortKey === 'cat' ? a.category.localeCompare(b.category) : a.amountCents - b.amountCents;
       return x * sortDir;
@@ -679,7 +688,7 @@ export default function TransactionsPage() {
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">No transactions match these filters.</td></tr>
+            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">{fCats.length === 0 ? 'No categories selected.' : 'No transactions match these filters.'}</td></tr>
           ) : rows.map(renderRow)}
         </tbody>
       </table>
