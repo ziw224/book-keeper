@@ -536,7 +536,7 @@ export default function TransactionsPage() {
   const [fmDate, setFmDate] = useState(todayYMD());
   const [fmMerchant, setFmMerchant] = useState('');
   const [fmAmount, setFmAmount] = useState('');
-  const [fmTxnType, setFmTxnType] = useState<'expense' | 'refund' | 'income'>('expense');
+  const [fmTxnType, setFmTxnType] = useState<'expense' | 'income'>('expense');
   const [fmCat, setFmCat] = useState('');
   const [fmCard, setFmCard] = useState('');
   const [fmNotes, setFmNotes] = useState('');
@@ -679,7 +679,7 @@ export default function TransactionsPage() {
   function openEdit(t: Txn) {
     setEditing(t.id); setFmDate(t.date); setFmMerchant(t.merchant);
     setFmAmount(centsToInput(Math.abs(t.amountCents)));
-    setFmTxnType(t.amountCents >= 0 ? 'refund' : 'expense');
+    setFmTxnType(t.amountCents >= 0 ? 'income' : 'expense');
     setFmCat(t.category); setFmCard(t.cardId); setFmNotes(t.notes ?? ''); setFormErr('');
     setFmRecurring(false); setFmRecurFreq('monthly'); setFmRecurDay(''); setFmRecurEnd('');
     setShowForm(true);
@@ -930,13 +930,13 @@ export default function TransactionsPage() {
               <FmField label="Merchant"><MerchantAutocomplete value={fmMerchant} onChange={setFmMerchant} suggestions={allMerchantNames} /></FmField>
               <FmField label="Amount">
                 <div className="flex gap-1.5">
-                  {(['expense', 'refund', 'income'] as const).map(t => (
+                  {(['expense', 'income'] as const).map(t => (
                     <button key={t} type="button" onClick={() => setFmTxnType(t)}
                       className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${fmTxnType === t
                         ? t === 'expense' ? 'border-rose-300 bg-rose-50 text-rose-600'
                         : 'border-emerald-300 bg-emerald-50 text-emerald-600'
                         : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                      {t === 'expense' ? '− Expense' : t === 'refund' ? '+ Refund' : '+ Income'}
+                      {t === 'expense' ? '− Expense' : '+ Income / Refund'}
                     </button>
                   ))}
                 </div>
