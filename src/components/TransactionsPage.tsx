@@ -118,6 +118,22 @@ export default function TransactionsPage() {
     api<Txn[]>(`/api/transactions?${params.toString()}`).then(setTxns).catch(() => setError('Could not refresh.'));
   }
 
+  async function showAllDates() {
+    try {
+      const all = await api<Txn[]>('/api/transactions');
+      if (all.length === 0) return;
+      const dates = all.map(t => t.date).sort();
+      setFFrom(dates[0]);
+      setFTo(dates[dates.length - 1]);
+    } catch { /* ignore */ }
+  }
+
+  function showThisMonth() {
+    const now = new Date();
+    setFFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
+    setFTo(todayYMD());
+  }
+
   function openAdd() {
     setEditing(null); setFmDate(todayYMD()); setFmMerchant(''); setFmAmount('');
     setFmCat(''); setFmCard(fCard || cards[0]?.id || ''); setFmNotes(''); setFormErr(''); setShowForm(true);
@@ -251,6 +267,8 @@ export default function TransactionsPage() {
         </select>
         <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className={selCls} aria-label="From date" />
         <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className={selCls} aria-label="To date" />
+        <button onClick={showAllDates} className="h-9 rounded-lg border border-neutral-300 bg-white px-3 text-xs font-medium text-neutral-600 hover:bg-neutral-50">All time</button>
+        <button onClick={showThisMonth} className="h-9 rounded-lg border border-neutral-300 bg-white px-3 text-xs font-medium text-neutral-600 hover:bg-neutral-50">This month</button>
       </div>
 
       {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
