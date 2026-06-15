@@ -185,7 +185,11 @@ export default function TransactionsPage() {
   const groups = useMemo(() => rollup(visible as TxnRow[], groupBy), [visible, groupBy]);
   const flatRows = useMemo(() => groupBy === 'none' ? [...visible].sort((a, b) => b.date.localeCompare(a.date)) : [], [visible, groupBy]);
 
-  // Adjustments for the strip
+  // Non-expense rows visible in grouped view
+  const incomeRows = useMemo(() => visible.filter(t => kindOf(t as TxnRow) === 'income').sort((a, b) => b.date.localeCompare(a.date)), [visible]);
+  const adjRows = useMemo(() => visible.filter(t => kindOf(t as TxnRow) === 'adjustment').sort((a, b) => b.date.localeCompare(a.date)), [visible]);
+
+  // Adjustments for the strip (from all txns, not just visible)
   const adjustments = useMemo(() => txns.filter(t => t.isStatementAdjustment), [txns]);
 
   const allMerchantNames = useMemo(() => [...new Set(txns.map(t => t.merchant))].sort(), [txns]);
@@ -330,8 +334,8 @@ export default function TransactionsPage() {
         <div className="flex items-center justify-center py-16"><div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600" /></div>
       ) : groupBy !== 'none' ? (
         <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
-          {groups.length === 0 ? (
-            <p className="py-12 text-center text-sm text-neutral-400">No spending in this period.</p>
+          {groups.length === 0 && incomeRows.length === 0 && adjRows.length === 0 ? (
+            <p className="py-12 text-center text-sm text-neutral-400">No transactions in this period.</p>
           ) : groups.map(g => (
             <div key={g.key}>
               <button onClick={() => toggleGroup(g.key)} className="sticky top-0 z-10 flex w-full items-center gap-3 border-b border-neutral-100 bg-white/90 px-4 py-2.5 backdrop-blur transition hover:bg-neutral-50">
@@ -352,6 +356,42 @@ export default function TransactionsPage() {
               )}
             </div>
           ))}
+
+          {/* Income section (when toggled on) */}
+          {incomeRows.length > 0 && (
+            <div>
+              <button onClick={() => toggleGroup('__income__')} className="flex w-full items-center gap-3 border-b border-neutral-100 bg-emerald-50/30 px-4 py-2.5 transition hover:bg-emerald-50/50">
+                <span className="h-2.5 w-2.5 rounded-sm shrink-0 bg-emerald-500" />
+                <span className="text-sm font-semibold text-emerald-700">Income / Refunds</span>
+                <span className="ml-auto text-[13px] font-medium text-emerald-600">{formatUSD(incomeRows.reduce((s, t) => s + t.amountCents, 0))}</span>
+                <span className="text-[13px] text-neutral-400">{incomeRows.length}</span>
+                {expanded.has('__income__') ? <ChevronDown className="h-4 w-4 text-neutral-400" /> : <ChevronRight className="h-4 w-4 text-neutral-400" />}
+              </button>
+              {expanded.has('__income__') && (
+                <div className="divide-y divide-neutral-50">
+                  {incomeRows.map(t => <TxnRowComp key={t.id} t={t as Txn} onEdit={openEdit} onDelete={id => setPending(id)} pending={pending} onConfirmDelete={confirmDelete} onCancelDelete={() => setPending(null)} onMarkPaid={markStatementStatus} />)}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Adjustment section (when toggled on) */}
+          {adjRows.length > 0 && (
+            <div>
+              <button onClick={() => toggleGroup('__adj__')} className="flex w-full items-center gap-3 border-b border-neutral-100 bg-amber-50/30 px-4 py-2.5 transition hover:bg-amber-50/50">
+                <span className="h-2.5 w-2.5 rounded-sm shrink-0 bg-amber-500" />
+                <span className="text-sm font-semibold text-amber-700">Statement Adjustments</span>
+                <span className="ml-auto text-[13px] text-neutral-400">excluded from spending</span>
+                <span className="text-[13px] text-neutral-400">{adjRows.length}</span>
+                {expanded.has('__adj__') ? <ChevronDown className="h-4 w-4 text-neutral-400" /> : <ChevronRight className="h-4 w-4 text-neutral-400" />}
+              </button>
+              {expanded.has('__adj__') && (
+                <div className="divide-y divide-neutral-50">
+                  {adjRows.map(t => <TxnRowComp key={t.id} t={t as Txn} onEdit={openEdit} onDelete={id => setPending(id)} pending={pending} onConfirmDelete={confirmDelete} onCancelDelete={() => setPending(null)} onMarkPaid={markStatementStatus} />)}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       ) : (
         <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
