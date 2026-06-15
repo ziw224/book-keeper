@@ -172,8 +172,8 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
   const ref = useRef<HTMLDivElement>(null);
 
   const allIds = availableCategories;
-  const allSelected = allIds.length > 0 && allIds.every(id => selected.includes(id));
-  const noneSelected = selected.length === 0;
+  const allSelected = selected.length === 0 || (allIds.length > 0 && allIds.every(id => selected.includes(id)));
+  const noneSelected = false;
 
   useEffect(() => {
     if (!open) return;
@@ -185,8 +185,7 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
   }, [open]);
 
   function toggleAll() {
-    if (allSelected) onChange([]);
-    else onChange([...allIds]);
+    onChange([...allIds]);
   }
 
   function toggleOne(id: string) {
@@ -244,7 +243,7 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
             <div className="my-1 border-t border-slate-100" />
 
             {filtered.map(cat => {
-              const checked = selected.includes(cat);
+              const checked = allSelected || selected.includes(cat);
               return (
                 <button
                   key={cat}
