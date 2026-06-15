@@ -784,7 +784,7 @@ export default function TransactionsPage() {
             {!editing && (
               <div className="mt-4">
                 <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={fmRecurring} onChange={e => setFmRecurring(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+                  <input type="checkbox" checked={fmRecurring} onChange={e => { setFmRecurring(e.target.checked); if (e.target.checked && !fmRecurDay && fmDate) setFmRecurDay(String(parseInt(fmDate.split('-')[2], 10))); }} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
                   <span className="text-sm font-semibold text-slate-700">🔁 Recurring transaction</span>
                 </label>
                 {fmRecurring && (
@@ -799,7 +799,7 @@ export default function TransactionsPage() {
                       <input type="number" min={1} max={31} value={fmRecurDay} onChange={e => setFmRecurDay(e.target.value)} placeholder={fmDate.split('-')[2] || '15'} className={fmInputCls} />
                     </FmField>
                     <FmField label="End date (optional)">
-                      <CalendarPicker value={fmRecurEnd} onChange={setFmRecurEnd} placeholder="No end date" />
+                      <CalendarPicker value={fmRecurEnd} onChange={setFmRecurEnd} placeholder="No end date" openUp />
                     </FmField>
                   </div>
                 )}

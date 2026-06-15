@@ -14,6 +14,7 @@ interface Props {
   onChange: (v: string) => void;
   notices?: CalendarNotice[];
   placeholder?: string;
+  openUp?: boolean;
 }
 
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -53,7 +54,7 @@ function buildCells(year: number, monthIdx: number) {
   return cells;
 }
 
-export default function CalendarPicker({ value, onChange, notices = [], placeholder }: Props) {
+export default function CalendarPicker({ value, onChange, notices = [], placeholder, openUp }: Props) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -125,7 +126,7 @@ export default function CalendarPicker({ value, onChange, notices = [], placehol
       </button>
 
       {open && (
-        <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+        <div className={`absolute left-0 z-[60] w-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl ${openUp ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'}`}>
           {/* Month header */}
           <div className="flex items-center justify-between px-5 py-4">
             <button onClick={prev} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Previous month">
