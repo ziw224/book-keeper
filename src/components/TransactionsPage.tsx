@@ -783,7 +783,7 @@ export default function TransactionsPage() {
       );
     }
     return (
-      <tr key={t.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/50">
+      <tr key={t.id} className={`border-b border-slate-100 transition-colors hover:bg-slate-50/50 ${t.isPending ? 'bg-amber-50/40' : ''}`}>
         <td className="px-5 py-3.5 text-sm font-medium text-slate-500">{t.date.slice(5)}</td>
         <td className="px-5 py-3.5 text-sm font-semibold">
           {t.merchant}

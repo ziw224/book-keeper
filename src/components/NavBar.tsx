@@ -287,14 +287,24 @@ export default function NavBar() {
                     </div>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div className="rounded-lg bg-slate-50 p-2.5">
+                    <label className="rounded-lg bg-slate-50 p-2.5 block">
                       <p className="text-[10px] font-semibold text-slate-400">Close day</p>
-                      <p className="text-sm font-bold text-slate-950">{card.statementCloseDay ?? '—'}</p>
-                    </div>
-                    <div className="rounded-lg bg-slate-50 p-2.5">
+                      <input type="number" min={1} max={31} defaultValue={card.statementCloseDay ?? ''} className="mt-0.5 h-7 w-full rounded border border-slate-200 bg-white px-2 text-sm font-bold outline-none focus:border-indigo-400" onBlur={async e => {
+                        const v = parseInt(e.target.value, 10);
+                        if (v >= 1 && v <= 31 && v !== card.statementCloseDay) {
+                          await fetch(`/api/cards/${card.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ statementCloseDay: v }) });
+                          fetch('/api/cards').then(r => r.json()).then(setCards).catch(() => {});
+                        }
+                      }} />
+                    </label>
+                    <label className="rounded-lg bg-slate-50 p-2.5 block">
                       <p className="text-[10px] font-semibold text-slate-400">Due day</p>
-                      <p className="text-sm font-bold text-slate-950">{(card as Card & { paymentDueDay?: number | null }).paymentDueDay ?? '—'}</p>
-                    </div>
+                      <input type="number" min={1} max={31} defaultValue={(card as Card & { paymentDueDay?: number | null }).paymentDueDay ?? ''} placeholder="Not set" className="mt-0.5 h-7 w-full rounded border border-slate-200 bg-white px-2 text-sm font-bold outline-none focus:border-indigo-400" onBlur={async e => {
+                        const v = e.target.value ? parseInt(e.target.value, 10) : null;
+                        await fetch(`/api/cards/${card.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentDueDay: v }) });
+                        fetch('/api/cards').then(r => r.json()).then(setCards).catch(() => {});
+                      }} />
+                    </label>
                   </div>
                 </div>
               ))}

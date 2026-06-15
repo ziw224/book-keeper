@@ -12,6 +12,7 @@ interface Card {
   last4: string;
   type: string;
   statementCloseDay: number | null;
+  paymentDueDay: number | null;
 }
 
 const AVATAR_PALETTE: [string, string][] = [
@@ -54,6 +55,7 @@ export default function CardsPage() {
   const [last4, setLast4] = useState('');
   const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
   const [close, setClose] = useState('');
+  const [dueDay, setDueDay] = useState('');
   const [formErr, setFormErr] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -100,6 +102,7 @@ export default function CardsPage() {
     setLast4('');
     setCardType('credit');
     setClose('');
+    setDueDay('');
     setFormErr('');
   }
 
@@ -110,6 +113,7 @@ export default function CardsPage() {
     setLast4(c.last4);
     setCardType(c.type as 'credit' | 'debit');
     setClose(c.statementCloseDay != null ? String(c.statementCloseDay) : '');
+    setDueDay(c.paymentDueDay != null ? String(c.paymentDueDay) : '');
     setFormErr('');
   }
 
@@ -134,6 +138,7 @@ export default function CardsPage() {
         last4: l,
         type: cardType,
         statementCloseDay: cardType === 'credit' ? parseInt(close, 10) : null,
+        paymentDueDay: cardType === 'credit' && dueDay ? parseInt(dueDay, 10) : null,
       });
       if (editing) await api(`/api/cards/${editing}`, { method: 'PATCH', body });
       else await api('/api/cards', { method: 'POST', body });
@@ -214,7 +219,7 @@ export default function CardsPage() {
                 {c.type === 'credit' && c.statementCloseDay != null && (
                   <p className="mt-1 flex items-center gap-1 text-xs text-neutral-400">
                     <CalendarDays className="h-3.5 w-3.5" />
-                    closes on the {ordinal(c.statementCloseDay)}
+                    closes {ordinal(c.statementCloseDay)}{c.paymentDueDay ? ` · due ${ordinal(c.paymentDueDay)}` : ''}
                   </p>
                 )}
               </div>
@@ -269,9 +274,14 @@ export default function CardsPage() {
             </div>
           </Field>
           {cardType === 'credit' && (
-            <Field label="Statement close day">
-              <input type="number" min={1} max={31} value={close} onChange={(e) => setClose(e.target.value)} placeholder="15" className={inputCls} />
-            </Field>
+            <>
+              <Field label="Statement close day">
+                <input type="number" min={1} max={31} value={close} onChange={(e) => setClose(e.target.value)} placeholder="15" className={inputCls} />
+              </Field>
+              <Field label="Payment due day (optional)">
+                <input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} placeholder="e.g. 10" className={inputCls} />
+              </Field>
+            </>
           )}
         </div>
         {formErr && <p className="mt-2.5 text-xs text-rose-600">{formErr}</p>}

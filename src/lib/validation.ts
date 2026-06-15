@@ -15,6 +15,7 @@ export const cardCreateSchema = z.object({
   last4: z.string().length(4, 'Must be exactly 4 characters'),
   type: z.enum(['credit', 'debit']).default('credit'),
   statementCloseDay: z.number().int().min(1).max(31).nullable().optional(),
+  paymentDueDay: z.number().int().min(1).max(31).nullable().optional(),
 }).superRefine((data, ctx) => {
   if (data.type === 'credit') {
     if (data.statementCloseDay == null) {
@@ -25,9 +26,8 @@ export const cardCreateSchema = z.object({
       })
     }
   } else {
-    if (data.statementCloseDay != null) {
-      data.statementCloseDay = null
-    }
+    data.statementCloseDay = null
+    data.paymentDueDay = null
   }
 })
 
@@ -37,6 +37,7 @@ export const cardUpdateSchema = z.object({
   last4: z.string().length(4, 'Must be exactly 4 characters').optional(),
   type: z.enum(['credit', 'debit']).optional(),
   statementCloseDay: z.number().int().min(1).max(31).nullable().optional(),
+  paymentDueDay: z.number().int().min(1).max(31).nullable().optional(),
 }).superRefine((data, ctx) => {
   if (data.type === 'credit' && data.statementCloseDay === null) {
     ctx.addIssue({
