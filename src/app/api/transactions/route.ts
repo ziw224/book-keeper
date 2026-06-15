@@ -57,21 +57,29 @@ export async function GET(req: NextRequest) {
 
     for (const sb of stmtBalances) {
       if (cardId && sb.cardId !== cardId) continue
-      if (from && sb.cycleEndDate < from) continue
-      if (to && sb.cycleStartDate > to) continue
-      const cycleTxns = transactions.filter(t => t.cardId === sb.cardId && t.date >= sb.cycleStartDate && t.date <= sb.cycleEndDate)
-      const manualTotal = cycleTxns.reduce((s, t) => s + t.amountCents, 0)
+
+      let adjDate = sb.cycleEndDate
+      if (sb.card.paymentDueDay) {
+        const [closeY, closeM] = sb.cycleKey.split('-').map(Number)
+        let dueM = closeM + 1, dueY = closeY
+        if (dueM > 12) { dueM = 1; dueY++ }
+        const dim = new Date(dueY, dueM, 0).getDate()
+        const dueD = Math.min(sb.card.paymentDueDay, dim)
+        adjDate = `${dueY}-${pad2(dueM)}-${pad2(dueD)}`
+      }
+
+      const isPending = sb.paymentStatus === 'pending'
+      if (!isPending) {
+        if (from && adjDate < from) continue
+        if (to && adjDate > to) continue
+      }
+
+      const allCardTxns = await prisma.transaction.findMany({
+        where: { cardId: sb.cardId, date: { gte: sb.cycleStartDate, lte: sb.cycleEndDate } },
+      })
+      const manualTotal = allCardTxns.reduce((s, t) => s + t.amountCents, 0)
       const adjustment = sb.statementTotalCents - manualTotal
       if (adjustment !== 0) {
-        let adjDate = sb.cycleEndDate
-        if (sb.card.paymentDueDay) {
-          const [closeY, closeM] = sb.cycleKey.split('-').map(Number)
-          let dueM = closeM + 1, dueY = closeY
-          if (dueM > 12) { dueM = 1; dueY++ }
-          const dim = new Date(dueY, dueM, 0).getDate()
-          const dueD = Math.min(sb.card.paymentDueDay, dim)
-          adjDate = `${dueY}-${pad2(dueM)}-${pad2(dueD)}`
-        }
         withCycle.push({
           id: `stmt-adj-${sb.id}`,
           cardId: sb.cardId,
