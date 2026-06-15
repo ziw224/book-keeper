@@ -314,7 +314,7 @@ function CategoryPickerModal({ value, onChange }: { value: string; onChange: (v:
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-[60] w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+        <div className="absolute left-0 bottom-[calc(100%+6px)] z-[60] w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
           <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2.5">
             <Search className="h-4 w-4 text-slate-400" />
             <input
@@ -325,7 +325,7 @@ function CategoryPickerModal({ value, onChange }: { value: string; onChange: (v:
               autoFocus
             />
           </div>
-          <div className="max-h-56 overflow-auto p-1">
+          <div className="max-h-64 overflow-auto p-1">
             {filtered.map(cat => (
               <button
                 key={cat}
@@ -341,44 +341,46 @@ function CategoryPickerModal({ value, onChange }: { value: string; onChange: (v:
             {query && !filtered.length && (
               <p className="px-3 py-2 text-xs text-slate-400">No match — create a custom category below</p>
             )}
-          </div>
 
-          {/* Create custom category */}
-          {!creating ? (
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              className="flex w-full items-center gap-2 border-t border-slate-100 px-3 py-2.5 text-left text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
-            >
-              <Plus className="h-4 w-4" />
-              Create custom category
-            </button>
-          ) : (
-            <div className="border-t border-slate-100 p-3 space-y-2">
-              <p className="text-xs font-semibold text-slate-500">New category</p>
-              <div className="flex gap-2">
-                <input
-                  value={newIcon}
-                  onChange={e => setNewIcon(e.target.value)}
-                  placeholder="😀"
-                  className="h-9 w-12 rounded-lg border border-slate-200 text-center text-lg outline-none focus:border-indigo-400"
-                  maxLength={2}
-                />
-                <input
-                  value={newName}
-                  onChange={e => setNewName(e.target.value)}
-                  placeholder="Category name"
-                  className="h-9 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"
-                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); handleCreate(); } }}
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-2">
-                <button type="button" onClick={handleCreate} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Add</button>
-                <button type="button" onClick={() => setCreating(false)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50">Cancel</button>
-              </div>
+            {/* Create custom category — inside scroll area */}
+            <div className="mt-1 border-t border-slate-100 pt-1">
+              {!creating ? (
+                <button
+                  type="button"
+                  onClick={() => setCreating(true)}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create custom category
+                </button>
+              ) : (
+                <div className="p-2 space-y-2">
+                  <p className="text-xs font-semibold text-slate-500">New category</p>
+                  <div className="flex gap-2">
+                    <input
+                      value={newIcon}
+                      onChange={e => setNewIcon(e.target.value)}
+                      placeholder="😀"
+                      className="h-9 w-12 rounded-lg border border-slate-200 text-center text-lg outline-none focus:border-indigo-400"
+                      maxLength={4}
+                    />
+                    <input
+                      value={newName}
+                      onChange={e => setNewName(e.target.value)}
+                      placeholder="Category name"
+                      className="h-9 flex-1 rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-indigo-400"
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); handleCreate(); } }}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={handleCreate} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Add</button>
+                    <button type="button" onClick={() => setCreating(false)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold hover:bg-slate-50">Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>
