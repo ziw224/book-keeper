@@ -7,6 +7,7 @@ import { SUGGESTED_CATEGORIES, categoryColor, categoryIcon, getAllCategories, ad
 import type { StatementCycle } from '@/lib/cycle';
 import CalendarPicker, { CalendarNotice } from '@/components/CalendarPicker';
 import { findCanonicalMerchant } from '@/lib/merchant';
+import { getPaycheckRules, generatePaycheckDates } from '@/lib/importantDates';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -535,6 +536,7 @@ export default function TransactionsPage() {
   const [fmDate, setFmDate] = useState(todayYMD());
   const [fmMerchant, setFmMerchant] = useState('');
   const [fmAmount, setFmAmount] = useState('');
+  const [fmTxnType, setFmTxnType] = useState<'expense' | 'refund' | 'income'>('expense');
   const [fmCat, setFmCat] = useState('');
   const [fmCard, setFmCard] = useState('');
   const [fmNotes, setFmNotes] = useState('');
@@ -668,14 +670,16 @@ export default function TransactionsPage() {
 
   function openAdd() {
     setEditing(null); setFmDate(todayYMD()); setFmMerchant(''); setFmAmount('');
-    setFmCat(''); setFmNotes(''); setFormErr('');
+    setFmTxnType('expense'); setFmCat(''); setFmNotes(''); setFormErr('');
     setFmRecurring(false); setFmRecurFreq('monthly'); setFmRecurDay(''); setFmRecurEnd('');
     const sorted = getSortedCards(cards);
     setFmCard(fCard || sorted[0]?.id || '');
     setShowForm(true);
   }
   function openEdit(t: Txn) {
-    setEditing(t.id); setFmDate(t.date); setFmMerchant(t.merchant); setFmAmount(centsToInput(t.amountCents));
+    setEditing(t.id); setFmDate(t.date); setFmMerchant(t.merchant);
+    setFmAmount(centsToInput(Math.abs(t.amountCents)));
+    setFmTxnType(t.amountCents >= 0 ? 'refund' : 'expense');
     setFmCat(t.category); setFmCard(t.cardId); setFmNotes(t.notes ?? ''); setFormErr('');
     setFmRecurring(false); setFmRecurFreq('monthly'); setFmRecurDay(''); setFmRecurEnd('');
     setShowForm(true);
@@ -687,7 +691,8 @@ export default function TransactionsPage() {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(fmDate)) return setFormErr('Enter a valid date.');
     if (!fmMerchant.trim()) return setFormErr('Merchant is required.');
     let amountCents: number;
-    try { amountCents = toCents(fmAmount); } catch { return setFormErr('Enter a valid amount.'); }
+    try { amountCents = Math.abs(toCents(fmAmount)); } catch { return setFormErr('Enter a valid amount.'); }
+    if (fmTxnType === 'expense') amountCents = -amountCents;
     if (!fmCat.trim()) return setFormErr('Pick or type a category.');
     setSaving(true);
     try {
@@ -738,12 +743,9 @@ export default function TransactionsPage() {
   const calendarNotices = useMemo(() => {
     const out: CalendarNotice[] = [];
     const now = new Date();
-    for (let offset = -2; offset <= 2; offset++) {
-      const y = now.getFullYear(), m = now.getMonth() + offset;
-      const dt = new Date(y, m, 15);
-      out.push({ date: `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-15`, label: 'Paycheck', color: '#10b981' });
-      const last = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
-      out.push({ date: `${last.getFullYear()}-${pad2(last.getMonth() + 1)}-${pad2(last.getDate())}`, label: 'Paycheck', color: '#10b981' });
+    const pcDates = generatePaycheckDates(getPaycheckRules());
+    for (const pc of pcDates) {
+      out.push({ date: pc.date, label: pc.label, color: '#10b981' });
     }
     const relevantCards = fCard ? cards.filter(c => c.id === fCard) : cards;
     for (const c of relevantCards) {
@@ -926,7 +928,20 @@ export default function TransactionsPage() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FmField label="Merchant"><MerchantAutocomplete value={fmMerchant} onChange={setFmMerchant} suggestions={allMerchantNames} /></FmField>
-              <FmField label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={fmInputCls} /></FmField>
+              <FmField label="Amount">
+                <div className="flex gap-1.5">
+                  {(['expense', 'refund', 'income'] as const).map(t => (
+                    <button key={t} type="button" onClick={() => setFmTxnType(t)}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-semibold transition ${fmTxnType === t
+                        ? t === 'expense' ? 'border-rose-300 bg-rose-50 text-rose-600'
+                        : 'border-emerald-300 bg-emerald-50 text-emerald-600'
+                        : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                      {t === 'expense' ? '− Expense' : t === 'refund' ? '+ Refund' : '+ Income'}
+                    </button>
+                  ))}
+                </div>
+                <input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={`${fmInputCls} mt-1.5`} />
+              </FmField>
               <FmField label="Date"><CalendarPicker value={fmDate} onChange={setFmDate} notices={calendarNotices} /></FmField>
               <FmField label="Card">
                 <ModalDropdown
