@@ -489,45 +489,55 @@ export default function TransactionsPage() {
 
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
-      {/* Add/Edit form */}
+      {/* Add/Edit modal */}
       {showForm && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" onKeyDown={handleFormKeyDown}>
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-bold tracking-tight">{editing ? 'Edit Transaction' : 'Add Transaction'}</h2>
-            <button onClick={() => setShowForm(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <FmField label="Date"><input type="date" value={fmDate} onChange={e => setFmDate(e.target.value)} className={fmInputCls} /></FmField>
-            <FmField label="Card">
-              <select value={fmCard} onChange={e => setFmCard(e.target.value)} className={fmInputCls}>
-                <option value="">Select…</option>
-                {cards.map(c => <option key={c.id} value={c.id}>{c.name} ·· {c.last4}</option>)}
-              </select>
-            </FmField>
-            <FmField label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={fmInputCls} autoFocus /></FmField>
-            <FmField label="Merchant"><input value={fmMerchant} onChange={e => setFmMerchant(e.target.value)} placeholder="e.g. Whole Foods" className={fmInputCls} /></FmField>
-            <FmField label="Category">
-              <input list="cc-cats" value={fmCat} onChange={e => setFmCat(e.target.value)} placeholder="Dining" className={fmInputCls} />
-              <datalist id="cc-cats">{SUGGESTED_CATEGORIES.map(c => <option key={c} value={c} />)}</datalist>
-            </FmField>
-            <FmField label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="Optional notes" className={fmInputCls} /></FmField>
-          </div>
-          {formErr && <p className="mt-3 text-xs text-rose-600">{formErr}</p>}
-          <div className="mt-5 flex items-center justify-between">
-            <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
-              <Keyboard className="h-4 w-4" />
-              Press Enter to save
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 p-4"
+          onClick={() => setShowForm(false)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowForm(false); }}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+            onKeyDown={handleFormKeyDown}
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h2 className="text-xl font-bold tracking-tight">{editing ? 'Edit Transaction' : 'Add Transaction'}</h2>
+              <button onClick={() => setShowForm(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
             </div>
-            <div className="flex gap-3">
-              <button onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold hover:bg-slate-50">Cancel</button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition"
-              >
-                {saving ? 'Saving…' : 'Save'}
-                <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-xs">Enter</span>
-              </button>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FmField label="Merchant"><input value={fmMerchant} onChange={e => setFmMerchant(e.target.value)} placeholder="e.g. Whole Foods" className={fmInputCls} autoFocus /></FmField>
+              <FmField label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={fmInputCls} /></FmField>
+              <FmField label="Date"><input type="date" value={fmDate} onChange={e => setFmDate(e.target.value)} className={fmInputCls} /></FmField>
+              <FmField label="Card">
+                <select value={fmCard} onChange={e => setFmCard(e.target.value)} className={fmInputCls}>
+                  <option value="">Select…</option>
+                  {cards.map(c => <option key={c.id} value={c.id}>{c.name} ·· {c.last4}</option>)}
+                </select>
+              </FmField>
+              <FmField label="Category">
+                <input list="cc-cats" value={fmCat} onChange={e => setFmCat(e.target.value)} placeholder="Dining" className={fmInputCls} />
+                <datalist id="cc-cats">{SUGGESTED_CATEGORIES.map(c => <option key={c} value={c} />)}</datalist>
+              </FmField>
+              <FmField label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="Optional notes" className={fmInputCls} /></FmField>
+            </div>
+            {formErr && <p className="mt-3 text-xs text-rose-600">{formErr}</p>}
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
+                <Keyboard className="h-4 w-4" />
+                Press Enter to save
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+                <button
+                  onClick={save}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition"
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                  <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-xs">Enter</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
