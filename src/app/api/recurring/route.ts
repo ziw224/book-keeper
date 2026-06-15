@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { generateOccurrences } from '@/lib/recurring'
 
 export async function POST() {
+  try {
   const today = new Date()
   const throughDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
@@ -51,6 +52,9 @@ export async function POST() {
   }
 
   return NextResponse.json({ generated })
+  } catch {
+    return NextResponse.json({ generated: 0 })
+  }
 }
 
 export async function GET() {

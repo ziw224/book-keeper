@@ -47,36 +47,40 @@ export async function GET(req: NextRequest) {
     return { ...t, cycleKey: null, cycleLabel: null, isStatementAdjustment: false }
   })
 
-  const stmtBalances = await prisma.statementBalance.findMany({
-    include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
-  })
+  try {
+    const stmtBalances = await prisma.statementBalance.findMany({
+      include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
+    })
 
-  for (const sb of stmtBalances) {
-    if (cardId && sb.cardId !== cardId) continue
-    const cycleTxns = transactions.filter(t => t.cardId === sb.cardId && t.date >= sb.cycleStartDate && t.date <= sb.cycleEndDate)
-    const manualTotal = cycleTxns.reduce((s, t) => s + t.amountCents, 0)
-    const adjustment = sb.statementTotalCents - manualTotal
-    if (adjustment !== 0) {
-      withCycle.push({
-        id: `stmt-adj-${sb.id}`,
-        cardId: sb.cardId,
-        date: sb.cycleEndDate,
-        merchant: 'Statement Adjustment',
-        amountCents: adjustment,
-        category: 'Other',
-        notes: `Unentered ${sb.card.name} statement balance`,
-        recurringRuleId: null,
-        recurringRule: null,
-        isRecurringGenerated: false,
-        recurringOccurrenceDate: null,
-        card: sb.card,
-        cycleKey: sb.cycleKey,
-        cycleLabel: sb.cycleKey.split('-').map((v, i) => i === 1 ? ['','January','February','March','April','May','June','July','August','September','October','November','December'][Number(v)] : v).reverse().join(' '),
-        isStatementAdjustment: true,
-        createdAt: sb.createdAt,
-        updatedAt: sb.updatedAt,
-      } as typeof withCycle[0])
+    for (const sb of stmtBalances) {
+      if (cardId && sb.cardId !== cardId) continue
+      const cycleTxns = transactions.filter(t => t.cardId === sb.cardId && t.date >= sb.cycleStartDate && t.date <= sb.cycleEndDate)
+      const manualTotal = cycleTxns.reduce((s, t) => s + t.amountCents, 0)
+      const adjustment = sb.statementTotalCents - manualTotal
+      if (adjustment !== 0) {
+        withCycle.push({
+          id: `stmt-adj-${sb.id}`,
+          cardId: sb.cardId,
+          date: sb.cycleEndDate,
+          merchant: 'Statement Adjustment',
+          amountCents: adjustment,
+          category: 'Other',
+          notes: `Unentered ${sb.card.name} statement balance`,
+          recurringRuleId: null,
+          recurringRule: null,
+          isRecurringGenerated: false,
+          recurringOccurrenceDate: null,
+          card: sb.card,
+          cycleKey: sb.cycleKey,
+          cycleLabel: sb.cycleKey.split('-').map((v, i) => i === 1 ? ['','January','February','March','April','May','June','July','August','September','October','November','December'][Number(v)] : v).reverse().join(' '),
+          isStatementAdjustment: true,
+          createdAt: sb.createdAt,
+          updatedAt: sb.updatedAt,
+        } as typeof withCycle[0])
+      }
     }
+  } catch {
+    // Statement balance table may not exist yet — skip adjustments
   }
 
   withCycle.sort((a, b) => b.date.localeCompare(a.date))
