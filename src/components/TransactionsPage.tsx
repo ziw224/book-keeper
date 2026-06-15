@@ -404,6 +404,7 @@ export default function TransactionsPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
   });
   const [fTo, setFTo] = useState(() => todayYMD());
+  const [datePreset, setDatePreset] = useState<'month' | 'all' | null>('month');
 
   const [sortKey, setSortKey] = useState<SortKey>('date');
   const [sortDir, setSortDir] = useState<1 | -1>(-1);
@@ -507,6 +508,7 @@ export default function TransactionsPage() {
       const dates = all.map(t => t.date).sort();
       setFFrom(dates[0]);
       setFTo(dates[dates.length - 1]);
+      setDatePreset('all');
     } catch {}
   }
 
@@ -514,6 +516,7 @@ export default function TransactionsPage() {
     const now = new Date();
     setFFrom(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`);
     setFTo(todayYMD());
+    setDatePreset('month');
   }
 
   function openAdd() {
@@ -741,16 +744,16 @@ export default function TransactionsPage() {
 
           <div className="flex items-center gap-3">
             <div className="w-44">
-              <CalendarPicker value={fFrom} onChange={setFFrom} notices={calendarNotices} placeholder="Start date" />
+              <CalendarPicker value={fFrom} onChange={v => { setFFrom(v); setDatePreset(null); }} notices={calendarNotices} placeholder="Start date" />
             </div>
             <span className="text-slate-400">–</span>
             <div className="w-44">
-              <CalendarPicker value={fTo} onChange={setFTo} notices={calendarNotices} placeholder="End date" />
+              <CalendarPicker value={fTo} onChange={v => { setFTo(v); setDatePreset(null); }} notices={calendarNotices} placeholder="End date" />
             </div>
           </div>
 
-          <button onClick={showAllDates} className={quickBtnCls}>All time</button>
-          <button onClick={showThisMonth} className={quickBtnCls}>This month</button>
+          <button onClick={showAllDates} className={`${quickBtnCls} ${datePreset === 'all' ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : ''}`}>All time</button>
+          <button onClick={showThisMonth} className={`${quickBtnCls} ${datePreset === 'month' ? 'border-indigo-300 bg-indigo-50 text-indigo-600' : ''}`}>This month</button>
         </div>
       </section>
 
