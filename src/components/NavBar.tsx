@@ -61,6 +61,19 @@ export default function NavBar() {
     return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
   }, [menuOpen]);
 
+  async function saveStatement() {
+    if (!stCard || !stCycle || !stAmount) return;
+    let cents: number;
+    try { cents = -Math.abs(toCents(stAmount)); } catch { return; }
+    await fetch('/api/statements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardId: stCard, cycleKey: stCycle, statementTotalCents: cents }),
+    });
+    setStAmount('');
+    fetch('/api/statements').then(r => r.json()).then(setStmtBalances).catch(() => {});
+  }
+
   function openProfile() {
     setMenuOpen(false);
     setProfileOpen(true);
@@ -402,22 +415,17 @@ export default function NavBar() {
                   </select>
                 </label>
                 <label className="block">
-                  <span className="text-[10px] font-semibold text-slate-400">Statement total</span>
-                  <input value={stAmount} onChange={e => setStAmount(e.target.value)} placeholder="-1200" className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none" />
+                  <span className="text-[10px] font-semibold text-slate-400">Statement total <span className="rounded bg-rose-100 px-1 py-0.5 text-[8px] font-bold text-rose-600">Expense</span></span>
+                  <input value={stAmount} onChange={e => setStAmount(e.target.value)} placeholder="1200" inputMode="decimal"
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { e.preventDefault(); saveStatement(); } }}
+                    className="mt-1 h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs outline-none" />
+                  <span className="mt-1 block text-[9px] text-slate-400">Enter as positive. Stored as expense.</span>
                 </label>
               </div>
-              <button onClick={async () => {
-                if (!stCard || !stCycle || !stAmount) return;
-                let cents: number;
-                try { cents = toCents(stAmount); } catch { return; }
-                await fetch('/api/statements', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ cardId: stCard, cycleKey: stCycle, statementTotalCents: cents }),
-                });
-                setStAmount('');
-                fetch('/api/statements').then(r => r.json()).then(setStmtBalances).catch(() => {});
-              }} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Save</button>
+              <div className="flex items-center gap-3">
+                <button onClick={saveStatement} className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Save</button>
+                <span className="text-[9px] text-slate-400">Press Enter to save</span>
+              </div>
             </div>
 
             {/* Statement balances table */}
