@@ -29,6 +29,83 @@ function calendarMonth(dateStr: string) {
   return MONTHS[m - 1];
 }
 
+const RECENT_CARD_KEY = 'cardcycle_recent_card_ids';
+function rememberCard(cardId: string) {
+  try {
+    const existing = JSON.parse(localStorage.getItem(RECENT_CARD_KEY) || '[]');
+    const next = [cardId, ...existing.filter((id: string) => id !== cardId)].slice(0, 10);
+    localStorage.setItem(RECENT_CARD_KEY, JSON.stringify(next));
+  } catch {}
+}
+function getSortedCards(allCards: Card[]): Card[] {
+  try {
+    const recentIds: string[] = JSON.parse(localStorage.getItem(RECENT_CARD_KEY) || '[]');
+    return [...allCards].sort((a, b) => {
+      const ai = recentIds.indexOf(a.id), bi = recentIds.indexOf(b.id);
+      if (ai === -1 && bi === -1) return 0;
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+  } catch { return allCards; }
+}
+
+/* ── Inline dropdown for modal forms ─────────────────────── */
+
+function ModalDropdown({ value, label, options, onChange, placeholder }: {
+  value: string; label: string;
+  options: { value: string; label: string; icon?: React.ReactNode }[];
+  onChange: (v: string) => void; placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function esc(e: KeyboardEvent) { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } }
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  const display = options.find(o => o.value === value);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className={`flex h-[42px] w-full items-center justify-between rounded-xl border bg-white px-3 text-left text-sm transition ${
+          open ? 'border-indigo-400 ring-4 ring-indigo-100' : 'border-slate-200'
+        }`}
+      >
+        <span className="flex min-w-0 items-center gap-2 truncate">
+          {display?.icon}
+          <span className={display ? '' : 'text-slate-400'}>{display?.label || placeholder || 'Select…'}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+6px)] z-[60] max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+          {options.map(o => (
+            <button
+              key={o.value}
+              type="button"
+              onClick={() => { onChange(o.value); setOpen(false); }}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${value === o.value ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
+            >
+              {o.icon}
+              <span className="truncate">{o.label}</span>
+              {value === o.value && <Check className="ml-auto h-4 w-4 shrink-0 text-indigo-600" />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Reusable dropdown ────────────────────────────────────── */
 
 function Dropdown({ value, label, options, onChange, icon: Icon, disabled, placeholder }: {
@@ -299,7 +376,10 @@ export default function TransactionsPage() {
 
   function openAdd() {
     setEditing(null); setFmDate(todayYMD()); setFmMerchant(''); setFmAmount('');
-    setFmCat(''); setFmCard(fCard || cards[0]?.id || ''); setFmNotes(''); setFormErr(''); setShowForm(true);
+    setFmCat(''); setFmNotes(''); setFormErr('');
+    const sorted = getSortedCards(cards);
+    setFmCard(fCard || sorted[0]?.id || '');
+    setShowForm(true);
   }
   function openEdit(t: Txn) {
     setEditing(t.id); setFmDate(t.date); setFmMerchant(t.merchant); setFmAmount(centsToInput(t.amountCents));
@@ -319,6 +399,7 @@ export default function TransactionsPage() {
       const body = JSON.stringify({ cardId: fmCard, date: fmDate, merchant: fmMerchant.trim(), amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null });
       if (editing) await apiFetch(`/api/transactions/${editing}`, { method: 'PATCH', body });
       else await apiFetch('/api/transactions', { method: 'POST', body });
+      rememberCard(fmCard);
       setShowForm(false);
       showToast(`Transaction ${editing ? 'updated' : 'saved'} — ${fmMerchant.trim()} ${formatUSD(amountCents)}`);
       fetchTxns();
@@ -510,14 +591,25 @@ export default function TransactionsPage() {
               <FmField label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={fmInputCls} /></FmField>
               <FmField label="Date"><input type="date" value={fmDate} onChange={e => setFmDate(e.target.value)} className={fmInputCls} /></FmField>
               <FmField label="Card">
-                <select value={fmCard} onChange={e => setFmCard(e.target.value)} className={fmInputCls}>
-                  <option value="">Select…</option>
-                  {cards.map(c => <option key={c.id} value={c.id}>{c.name} ·· {c.last4}</option>)}
-                </select>
+                <ModalDropdown
+                  value={fmCard}
+                  label="Card"
+                  placeholder="Select card…"
+                  options={getSortedCards(cards).map(c => ({ value: c.id, label: `${c.name} •••• ${c.last4}` }))}
+                  onChange={setFmCard}
+                />
               </FmField>
               <FmField label="Category">
-                <input list="cc-cats" value={fmCat} onChange={e => setFmCat(e.target.value)} placeholder="Dining" className={fmInputCls} />
-                <datalist id="cc-cats">{SUGGESTED_CATEGORIES.map(c => <option key={c} value={c} />)}</datalist>
+                <ModalDropdown
+                  value={fmCat}
+                  label="Category"
+                  placeholder="Select category…"
+                  options={SUGGESTED_CATEGORIES.map(c => ({
+                    value: c, label: c,
+                    icon: <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: categoryColor(c) }} />,
+                  }))}
+                  onChange={setFmCat}
+                />
               </FmField>
               <FmField label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="Optional notes" className={fmInputCls} /></FmField>
             </div>
