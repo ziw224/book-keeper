@@ -617,20 +617,19 @@ export default function TransactionsPage() {
     return [...new Set(txns.map(t => t.merchant))].sort();
   }, [txns]);
 
+  const prevAvailable = useRef<string[]>([]);
   useEffect(() => {
-    setFCats(prev => {
-      const valid = prev.filter(c => availableCategories.includes(c));
-      if (valid.length === prev.length) return prev;
+    const prev = prevAvailable.current;
+    prevAvailable.current = availableCategories;
+
+    if (availableCategories.length === 0) return;
+
+    setFCats(selected => {
+      const wasAllSelected = prev.length > 0 && prev.every(c => selected.includes(c));
+      if (wasAllSelected || selected.length === 0) return [...availableCategories];
+      const valid = selected.filter(c => availableCategories.includes(c));
       return valid.length > 0 ? valid : [...availableCategories];
     });
-  }, [availableCategories]);
-
-  const catsInitialized = useRef(false);
-  useEffect(() => {
-    if (!catsInitialized.current && availableCategories.length > 0) {
-      catsInitialized.current = true;
-      setFCats([...availableCategories]);
-    }
   }, [availableCategories]);
 
   const allCatsSelected = availableCategories.length > 0 && availableCategories.every(c => fCats.includes(c));
