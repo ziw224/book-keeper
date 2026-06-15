@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "db:migrate": "npx prisma migrate dev",
     "db:seed": "npx prisma db seed",
-    "db:reset": "npx prisma migrate reset --force"
+    "db:reset": "npx prisma migrate reset --force",
+    "db:studio": "npx prisma studio"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed.ts"

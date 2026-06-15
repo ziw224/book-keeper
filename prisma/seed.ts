@@ -3,9 +3,12 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  // Clear existing data
-  await prisma.transaction.deleteMany()
-  await prisma.card.deleteMany()
+  const existingCards = await prisma.card.count()
+  if (existingCards > 0) {
+    console.log(`Database already has ${existingCards} card(s). Skipping seed.`)
+    console.log('Run "npm run db:reset" to wipe and re-seed.')
+    return
+  }
 
   // Card 1: close day 15
   const sapphire = await prisma.card.create({

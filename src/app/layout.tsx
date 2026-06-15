@@ -1,16 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
@@ -24,30 +19,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-gray-50 text-gray-900">
-        <nav className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3">
-          <div className="max-w-7xl mx-auto flex items-center gap-6">
-            <Link href="/" className="text-lg font-bold text-indigo-600">
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-slate-50 text-slate-900 font-[family-name:var(--font-inter)]">
+        <header className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/85 backdrop-blur">
+          <div className="mx-auto flex max-w-7xl items-center gap-10 px-8 py-5">
+            <Link href="/" className="text-2xl font-bold tracking-tight text-indigo-600">
               CardCycle
             </Link>
-            <div className="flex gap-4 text-sm">
-              <Link href="/" className="hover:text-indigo-600">
+            <nav className="flex items-center gap-8 text-sm font-medium">
+              <Link href="/" className="text-slate-600 hover:text-indigo-600 transition-colors">
                 Dashboard
               </Link>
-              <Link href="/cards" className="hover:text-indigo-600">
+              <Link href="/cards" className="text-slate-600 hover:text-indigo-600 transition-colors">
                 Cards
               </Link>
-              <Link href="/transactions" className="hover:text-indigo-600">
+              <Link href="/transactions" className="text-slate-600 hover:text-indigo-600 transition-colors">
                 Transactions
               </Link>
-            </div>
+            </nav>
           </div>
-        </nav>
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
+        </header>
+        <main className="flex-1 mx-auto max-w-7xl w-full px-8 py-10">
           {children}
         </main>
       </body>

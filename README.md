@@ -21,8 +21,9 @@ npm run dev                  # start at http://localhost:3000
 | `npm test` | Run unit tests (Vitest) |
 | `npm run build` | Production build |
 | `npm run db:migrate` | Run Prisma migrations |
-| `npm run db:seed` | Seed sample data |
-| `npm run db:reset` | Reset DB and re-seed |
+| `npm run db:seed` | Seed sample data (skips if data exists) |
+| `npm run db:reset` | Wipe DB, re-migrate, re-seed |
+| `npm run db:studio` | Open Prisma Studio (browse/edit data) |
 
 ## Environment
 
@@ -31,6 +32,36 @@ Create a `.env` file (already included):
 ```
 DATABASE_URL="file:./dev.db"
 ```
+
+## Local Development
+
+### Database location
+
+The SQLite database file lives at `prisma/dev.db`. It is gitignored and persists across dev server restarts.
+
+### Data safety
+
+- **Restarting the dev server does NOT reset your data.** Your cards and transactions survive `npm run dev` restarts and code changes.
+- **`npm run db:seed`** is safe to run — it checks if data already exists and skips if so.
+- **`npm run db:reset`** is the ONLY command that wipes data. Use it intentionally when you want a fresh start.
+- **`npm run db:studio`** opens Prisma Studio at `http://localhost:5555` where you can browse and edit data directly.
+
+### Setup from scratch
+
+```bash
+npm install                  # install dependencies
+npx prisma migrate dev       # create SQLite DB + tables
+npm run db:seed              # insert sample data (3 cards, 21 transactions)
+npm run dev                  # start at http://localhost:3000
+```
+
+### Intentionally reset
+
+```bash
+npm run db:reset             # wipes DB, re-runs migrations, re-seeds
+```
+
+---
 
 ## How to test locally
 

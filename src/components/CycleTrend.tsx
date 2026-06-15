@@ -7,24 +7,30 @@ interface TrendPoint { key: string; label: string; total: number }
 
 export default function CycleTrend({ data }: { data: TrendPoint[] }) {
   if (data.length === 0) {
-    return <p className="text-sm text-gray-400 text-center py-8">No trend data</p>
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-lg font-bold mb-6">Spending Trend</h3>
+        <p className="text-sm text-slate-400 text-center py-8">No trend data</p>
+      </div>
+    )
   }
 
-  const chartData = [...data].reverse().map(d => ({
-    name: d.label,
+  const chartData = [...data].reverse().map((d, i, arr) => ({
+    name: d.label.replace(/ \d{4}$/, ''),
     total: d.total / 100,
     totalCents: d.total,
+    isLatest: i === arr.length - 1,
   }))
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4">
-      <h3 className="text-sm font-medium text-gray-700 mb-2">Cycle Trend</h3>
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 className="text-lg font-bold mb-6">Spending Trend</h3>
       <ResponsiveContainer width="100%" height={280}>
-        <BarChart data={chartData}>
-          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-          <YAxis tickFormatter={(v) => `$${v}`} />
+        <BarChart data={chartData} barCategoryGap="20%">
+          <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+          <YAxis tickFormatter={(v) => `$${v}`} tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
           <Tooltip formatter={(val) => formatUSD(Math.round(Number(val) * 100))} />
-          <Bar dataKey="total" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="total" radius={[8, 8, 0, 0]} fill="#c7d2fe" />
         </BarChart>
       </ResponsiveContainer>
     </div>

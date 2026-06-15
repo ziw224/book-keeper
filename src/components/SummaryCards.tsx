@@ -18,17 +18,17 @@ export default function SummaryCards({
   cycleLabel?: string
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <p className="text-xs font-medium text-gray-500 uppercase">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <p className="text-sm font-medium text-slate-500">
           {cycleLabel ? `Total — ${cycleLabel}` : 'Total Spending'}
         </p>
-        <p className="mt-1 text-2xl font-bold">{formatUSD(total)}</p>
+        <p className="mt-2 text-3xl font-bold tracking-tight">{formatUSD(total)}</p>
       </div>
       {byCard.map((c) => (
-        <div key={c.cardId} className="bg-white rounded-lg border border-gray-200 p-4">
-          <p className="text-xs font-medium text-gray-500 uppercase">{c.name}</p>
-          <p className="mt-1 text-2xl font-bold">{formatUSD(c.total)}</p>
+        <div key={c.cardId} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">{c.name}</p>
+          <p className="mt-2 text-3xl font-bold tracking-tight">{formatUSD(c.total)}</p>
         </div>
       ))}
     </div>

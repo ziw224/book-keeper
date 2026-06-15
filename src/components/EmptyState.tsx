@@ -10,10 +10,10 @@ export default function EmptyState({
   action?: React.ReactNode
 }) {
   return (
-    <div className="text-center py-12">
-      <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-      <p className="mt-1 text-sm text-gray-500">{description}</p>
-      {action && <div className="mt-4">{action}</div>}
+    <div className="text-center py-20">
+      <h3 className="text-2xl font-bold text-slate-900">{title}</h3>
+      <p className="mt-2 text-base text-slate-500">{description}</p>
+      {action && <div className="mt-6">{action}</div>}
     </div>
   )
 }
