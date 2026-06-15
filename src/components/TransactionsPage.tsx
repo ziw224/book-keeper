@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { ListChecks, Plus, ArrowUp, ArrowDown, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState, useRef } from 'react';
+import { ListChecks, Plus, ArrowUp, ArrowDown, Pencil, Trash2, ChevronDown, ChevronRight, Check, Keyboard, X } from 'lucide-react';
 import { formatUSD, toCents } from '@/lib/money';
 import { SUGGESTED_CATEGORIES, categoryColor } from '@/lib/categories';
 import type { StatementCycle } from '@/lib/cycle';
@@ -25,8 +25,8 @@ async function api<T>(url: string, init: RequestInit = {}): Promise<T> {
 const todayYMD = () => new Date().toISOString().slice(0, 10);
 const centsToInput = (c: number) => (c / 100).toFixed(2);
 function calendarMonth(dateStr: string) {
-  const [y, m] = dateStr.split('-').map(Number);
-  return `${MONTHS[m - 1]} ${y}`;
+  const [, m] = dateStr.split('-').map(Number);
+  return MONTHS[m - 1];
 }
 
 export default function TransactionsPage() {
@@ -59,9 +59,17 @@ export default function TransactionsPage() {
   const [formErr, setFormErr] = useState('');
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const [creditOpen, setCreditOpen] = useState(true);
   const [debitOpen, setDebitOpen] = useState(true);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 2500);
+  }
 
   useEffect(() => { api<Card[]>('/api/cards').then(setCards).catch(() => setError('Could not load cards.')); }, []);
 
@@ -125,7 +133,7 @@ export default function TransactionsPage() {
       const dates = all.map(t => t.date).sort();
       setFFrom(dates[0]);
       setFTo(dates[dates.length - 1]);
-    } catch { /* ignore */ }
+    } catch {}
   }
 
   function showThisMonth() {
@@ -156,31 +164,41 @@ export default function TransactionsPage() {
       const body = JSON.stringify({ cardId: fmCard, date: fmDate, merchant: fmMerchant.trim(), amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null });
       if (editing) await api(`/api/transactions/${editing}`, { method: 'PATCH', body });
       else await api('/api/transactions', { method: 'POST', body });
-      setShowForm(false); refresh();
+      setShowForm(false);
+      showToast(`Transaction ${editing ? 'updated' : 'saved'} — ${fmMerchant.trim()} ${formatUSD(amountCents)}`);
+      refresh();
     } catch (e) { setFormErr(e instanceof Error ? e.message : 'Could not save.'); }
     finally { setSaving(false); }
   }
 
+  function handleFormKeyDown(e: React.KeyboardEvent) {
+    const target = e.target as HTMLElement;
+    if (e.key === 'Enter' && target.tagName !== 'TEXTAREA' && !e.nativeEvent.isComposing) {
+      e.preventDefault();
+      save();
+    }
+  }
+
   async function confirmDelete(id: string) {
-    try { await api(`/api/transactions/${id}`, { method: 'DELETE' }); setPending(null); refresh(); }
+    try { await api(`/api/transactions/${id}`, { method: 'DELETE' }); setPending(null); showToast('Transaction deleted'); refresh(); }
     catch { setError('Could not delete.'); }
   }
 
   function periodLabel(t: Txn) {
     if (t.cycleLabel) return t.cycleLabel.replace(/ 20\d\d$/, '');
-    return calendarMonth(t.date).replace(/ 20\d\d$/, '');
+    return calendarMonth(t.date);
   }
 
   function renderRow(t: Txn) {
     if (t.id === pending) {
       return (
-        <tr key={t.id} className="border-b border-neutral-100">
-          <td colSpan={7} className="px-2.5 py-3">
+        <tr key={t.id} className="border-b border-slate-100">
+          <td colSpan={7} className="px-5 py-3">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[13px]">Delete <span className="font-medium">{t.merchant}</span> ({formatUSD(t.amountCents)})?</span>
               <div className="flex gap-2">
-                <button onClick={() => setPending(null)} className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm hover:bg-neutral-50">Cancel</button>
-                <button onClick={() => confirmDelete(t.id)} className="rounded-lg border border-rose-300 px-3 py-1.5 text-sm text-rose-600 hover:bg-rose-50">Delete</button>
+                <button onClick={() => setPending(null)} className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-medium hover:bg-slate-50">Cancel</button>
+                <button onClick={() => confirmDelete(t.id)} className="rounded-xl border border-rose-200 px-3 py-1.5 text-sm font-medium text-rose-600 hover:bg-rose-50">Delete</button>
               </div>
             </div>
           </td>
@@ -188,21 +206,23 @@ export default function TransactionsPage() {
       );
     }
     return (
-      <tr key={t.id} className="border-b border-neutral-100">
-        <td className={`${tdCls} text-neutral-500`}>{t.date.slice(5)}</td>
-        <td className={`${tdCls} truncate`}>{t.merchant}</td>
-        <td className={tdCls}>
+      <tr key={t.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/50">
+        <td className="px-5 py-3.5 text-sm font-medium text-slate-500">{t.date.slice(5)}</td>
+        <td className="px-5 py-3.5 text-sm font-semibold">{t.merchant}</td>
+        <td className="px-5 py-3.5 text-sm">
           <span className="mr-1.5 inline-block h-2.5 w-2.5 rounded-sm align-[-1px]" style={{ background: categoryColor(t.category) }} />
           {t.category}
         </td>
-        <td className={tdCls}>
-          <span className="rounded-md bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">{periodLabel(t)}</span>
+        <td className="px-5 py-3.5 text-sm">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">{periodLabel(t)}</span>
         </td>
-        <td className={`${tdCls} text-right ${t.amountCents < 0 ? 'text-emerald-600' : 'text-neutral-900'}`}>{formatUSD(t.amountCents)}</td>
-        <td className={`${tdCls} text-neutral-400 break-words`}>{t.notes || ''}</td>
-        <td className={`${tdCls} text-right`}>
-          <button onClick={() => openEdit(t)} aria-label="Edit" className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"><Pencil className="h-4 w-4" /></button>
-          <button onClick={() => setPending(t.id)} aria-label="Delete" className="rounded p-1 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"><Trash2 className="h-4 w-4" /></button>
+        <td className={`px-5 py-3.5 text-sm text-right font-bold ${t.amountCents < 0 ? 'text-emerald-600' : ''}`}>{formatUSD(t.amountCents)}</td>
+        <td className="px-5 py-3.5 text-sm text-slate-500 break-words">{t.notes || ''}</td>
+        <td className="px-5 py-3.5 text-right">
+          <span className="inline-flex gap-1 text-slate-400">
+            <button onClick={() => openEdit(t)} aria-label="Edit" className="rounded-lg p-1 hover:bg-slate-100 hover:text-indigo-600 transition-colors"><Pencil className="h-4 w-4" /></button>
+            <button onClick={() => setPending(t.id)} aria-label="Delete" className="rounded-lg p-1 hover:bg-slate-100 hover:text-rose-600 transition-colors"><Trash2 className="h-4 w-4" /></button>
+          </span>
         </td>
       </tr>
     );
@@ -210,7 +230,7 @@ export default function TransactionsPage() {
 
   function renderTable(rows: Txn[]) {
     return (
-      <table className="w-full min-w-[640px] border-collapse table-fixed">
+      <table className="w-full min-w-[720px] border-collapse table-fixed">
         <colgroup>
           <col className="w-[8%]" />
           <col className="w-[14%]" />
@@ -221,19 +241,19 @@ export default function TransactionsPage() {
           <col className="w-14" />
         </colgroup>
         <thead>
-          <tr>
-            <Th onClick={() => toggleSort('date')} active={sortKey === 'date'} dir={sortDir}>Date</Th>
+          <tr className="border-b border-slate-100">
+            <SortTh onClick={() => toggleSort('date')} active={sortKey === 'date'} dir={sortDir}>Date</SortTh>
             <th className={thCls}>Merchant</th>
             <th className={thCls}>Category</th>
             <th className={thCls}>Period</th>
-            <Th onClick={() => toggleSort('amt')} active={sortKey === 'amt'} dir={sortDir} align="right">Amount</Th>
+            <SortTh onClick={() => toggleSort('amt')} active={sortKey === 'amt'} dir={sortDir} align="right">Amount</SortTh>
             <th className={thCls}>Notes</th>
-            <th className={`${thCls} w-16`} />
+            <th className={thCls} />
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={7} className="py-8 text-center text-sm text-neutral-400">No transactions match these filters.</td></tr>
+            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">No transactions match these filters.</td></tr>
           ) : rows.map(renderRow)}
         </tbody>
       </table>
@@ -241,23 +261,59 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ListChecks className="h-5 w-5 text-neutral-500" />
-          <span className="text-lg font-medium text-neutral-900">Transactions</span>
+        <div>
+          <div className="flex items-center gap-3">
+            <ListChecks className="h-6 w-6 text-slate-500" />
+            <h1 className="text-3xl font-bold tracking-tight">Transactions</h1>
+          </div>
+          <p className="mt-2 text-slate-500">Review spending by card, cycle, category, and date range.</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-sm hover:bg-neutral-50">
-          <Plus className="h-4 w-4" /> Add
+        <button
+          onClick={openAdd}
+          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-4 py-3 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50 transition"
+        >
+          <Plus className="h-4 w-4" /> Add Transaction
         </button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-2">
-        <select value={fCard} onChange={(e) => setFCard(e.target.value)} className={selCls}>
-          <option value="">All cards</option>
-          {cards.map(c => <option key={c.id} value={c.id}>{c.name} ·· {c.last4}</option>)}
-        </select>
-        <select value={fCycle} onChange={(e) => setFCycle(e.target.value)} disabled={!fCard || selectedCardIsDebit} title={selectedCardIsDebit ? 'Debit cards have no cycle' : !fCard ? 'Select a card' : ''} className={`${selCls} disabled:opacity-50`}>
+      {/* Card tabs */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
+        <div className="flex flex-wrap gap-1">
+          <button
+            onClick={() => setFCard('')}
+            className={`relative rounded-xl px-4 py-3 text-sm font-semibold transition ${!fCard ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
+          >
+            <span className="flex items-center gap-2">
+              {!fCard && <Check className="h-4 w-4" />}
+              All Cards
+              <span className="text-xs font-medium text-slate-400">({sorted.length})</span>
+            </span>
+          </button>
+          {cards.map(c => {
+            const active = fCard === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setFCard(c.id)}
+                className={`relative rounded-xl px-4 py-3 text-sm font-semibold transition ${active ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`}
+              >
+                <span className="flex items-center gap-2">
+                  {active && <Check className="h-4 w-4" />}
+                  {c.name}
+                  <span className="text-xs font-medium text-slate-400">•••• {c.last4}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Filters row */}
+      <div className="flex flex-wrap items-center gap-3">
+        <select value={fCycle} onChange={(e) => setFCycle(e.target.value)} disabled={!fCard || selectedCardIsDebit} title={selectedCardIsDebit ? 'Debit cards have no cycle' : !fCard ? 'Select a card' : ''} className={`${selCls} disabled:opacity-40`}>
           <option value="">{selectedCardIsDebit ? 'N/A (debit)' : fCard ? 'All cycles' : 'Cycle (pick a card)'}</option>
           {cycles.map(cy => <option key={cy.key} value={cy.key}>{cy.label}</option>)}
         </select>
@@ -267,77 +323,106 @@ export default function TransactionsPage() {
         </select>
         <input type="date" value={fFrom} onChange={(e) => setFFrom(e.target.value)} className={selCls} aria-label="From date" />
         <input type="date" value={fTo} onChange={(e) => setFTo(e.target.value)} className={selCls} aria-label="To date" />
-        <button onClick={showAllDates} className="h-9 rounded-lg border border-neutral-300 bg-white px-3 text-xs font-medium text-neutral-600 hover:bg-neutral-50">All time</button>
-        <button onClick={showThisMonth} className="h-9 rounded-lg border border-neutral-300 bg-white px-3 text-xs font-medium text-neutral-600 hover:bg-neutral-50">This month</button>
+        <button onClick={showAllDates} className={btnCls}>All time</button>
+        <button onClick={showThisMonth} className={btnCls}>This month</button>
       </div>
 
-      {error && <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
+      {error && <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>}
 
+      {/* Add/Edit form */}
       {showForm && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-5">
-          <p className="mb-3 text-[13px] text-neutral-500">{editing ? 'Edit transaction' : 'Add a transaction'}</p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Field label="Date"><input type="date" value={fmDate} onChange={e => setFmDate(e.target.value)} className={inputCls} /></Field>
-            <Field label="Card">
-              <select value={fmCard} onChange={e => setFmCard(e.target.value)} className={inputCls}>
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" onKeyDown={handleFormKeyDown}>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold tracking-tight">{editing ? 'Edit Transaction' : 'Add Transaction'}</h2>
+            <button onClick={() => setShowForm(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <FmField label="Date"><input type="date" value={fmDate} onChange={e => setFmDate(e.target.value)} className={fmInputCls} /></FmField>
+            <FmField label="Card">
+              <select value={fmCard} onChange={e => setFmCard(e.target.value)} className={fmInputCls}>
                 <option value="">Select…</option>
                 {cards.map(c => <option key={c.id} value={c.id}>{c.name} ·· {c.last4}</option>)}
               </select>
-            </Field>
-            <Field label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50" className={inputCls} /></Field>
-            <Field label="Merchant"><input value={fmMerchant} onChange={e => setFmMerchant(e.target.value)} placeholder="e.g. Whole Foods" className={inputCls} /></Field>
-            <Field label="Category">
-              <input list="cc-cats" value={fmCat} onChange={e => setFmCat(e.target.value)} placeholder="Dining" className={inputCls} />
+            </FmField>
+            <FmField label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={fmInputCls} autoFocus /></FmField>
+            <FmField label="Merchant"><input value={fmMerchant} onChange={e => setFmMerchant(e.target.value)} placeholder="e.g. Whole Foods" className={fmInputCls} /></FmField>
+            <FmField label="Category">
+              <input list="cc-cats" value={fmCat} onChange={e => setFmCat(e.target.value)} placeholder="Dining" className={fmInputCls} />
               <datalist id="cc-cats">{SUGGESTED_CATEGORIES.map(c => <option key={c} value={c} />)}</datalist>
-            </Field>
-            <Field label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="—" className={inputCls} /></Field>
+            </FmField>
+            <FmField label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="Optional notes" className={fmInputCls} /></FmField>
           </div>
-          {formErr && <p className="mt-2.5 text-xs text-rose-600">{formErr}</p>}
-          <div className="mt-3.5 flex gap-2">
-            <button onClick={save} disabled={saving} className="rounded-lg border border-neutral-300 px-3.5 py-2 text-sm hover:bg-neutral-50 disabled:opacity-50">{saving ? 'Saving…' : editing ? 'Update transaction' : 'Save transaction'}</button>
-            <button onClick={() => setShowForm(false)} className="rounded-lg border border-neutral-300 px-3.5 py-2 text-sm hover:bg-neutral-50">Cancel</button>
+          {formErr && <p className="mt-3 text-xs text-rose-600">{formErr}</p>}
+          <div className="mt-5 flex items-center justify-between">
+            <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">
+              <Keyboard className="h-4 w-4" />
+              Press Enter to save
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setShowForm(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold hover:bg-slate-50">Cancel</button>
+              <button
+                onClick={save}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 transition"
+              >
+                {saving ? 'Saving…' : 'Save'}
+                <span className="rounded-md bg-white/15 px-1.5 py-0.5 text-xs">Enter</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      <p className="text-[13px] text-neutral-500">
+      <p className="text-sm text-slate-500">
         {loading ? 'Loading…' : `Showing ${sorted.length} transaction${sorted.length === 1 ? '' : 's'} · ${formatUSD(net)} net`}
       </p>
 
-      <div className="overflow-x-auto">
+      {/* Table */}
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         {hasDebit && !fCard ? (
-          <div className="space-y-4">
-            {/* Credit section */}
-            <div>
-              <button onClick={() => setCreditOpen(o => !o)} className="flex items-center gap-1.5 mb-2 text-sm font-medium text-neutral-700 hover:text-neutral-900">
+          <div>
+            <div className="border-b border-slate-100 px-5 py-4">
+              <button onClick={() => setCreditOpen(o => !o)} className="flex items-center gap-1.5 text-sm font-bold text-slate-700 hover:text-slate-900">
                 {creditOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 Credit cards ({creditTxns.length}) · {formatUSD(creditNet)} net
               </button>
-              {creditOpen && renderTable(creditTxns)}
             </div>
-            {/* Debit section */}
-            <div>
-              <button onClick={() => setDebitOpen(o => !o)} className="flex items-center gap-1.5 mb-2 text-sm font-medium text-neutral-700 hover:text-neutral-900">
+            {creditOpen && renderTable(creditTxns)}
+            <div className="border-b border-slate-100 px-5 py-4">
+              <button onClick={() => setDebitOpen(o => !o)} className="flex items-center gap-1.5 text-sm font-bold text-slate-700 hover:text-slate-900">
                 {debitOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 Debit cards ({debitTxns.length}) · {formatUSD(debitNet)} net
               </button>
-              {debitOpen && renderTable(debitTxns)}
             </div>
+            {debitOpen && renderTable(debitTxns)}
           </div>
         ) : (
           renderTable(sorted)
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed right-8 top-8 z-50 flex items-center gap-3 rounded-2xl border border-emerald-200 bg-white p-4 shadow-xl animate-in fade-in slide-in-from-top-3">
+          <div className="rounded-full bg-emerald-100 p-1.5 text-emerald-600">
+            <Check className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-sm font-bold">Success</p>
+            <p className="text-xs text-slate-500">{toast}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-const selCls = 'h-9 rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-neutral-400';
-const inputCls = 'h-9 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-neutral-400';
-const thCls = 'border-b border-neutral-200 px-2.5 py-2 text-left text-xs font-normal text-neutral-500';
-const tdCls = 'border-b border-neutral-100 px-2.5 py-2.5 text-[13px] text-neutral-900';
+const selCls = 'h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium shadow-sm outline-none transition hover:border-indigo-300 hover:shadow-md focus:border-indigo-400';
+const btnCls = 'h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold shadow-sm hover:bg-slate-50 transition';
+const fmInputCls = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100';
+const thCls = 'px-5 py-3 text-left text-sm font-semibold text-slate-500';
 
-function Th({ children, onClick, active, dir, align = 'left' }: { children: React.ReactNode; onClick: () => void; active: boolean; dir: 1 | -1; align?: 'left' | 'right' }) {
+function SortTh({ children, onClick, active, dir, align = 'left' }: { children: React.ReactNode; onClick: () => void; active: boolean; dir: 1 | -1; align?: 'left' | 'right' }) {
   return (
     <th onClick={onClick} className={`${thCls} cursor-pointer select-none ${align === 'right' ? 'text-right' : ''}`}>
       <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
@@ -348,6 +433,6 @@ function Th({ children, onClick, active, dir, align = 'left' }: { children: Reac
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="mb-1.5 block text-xs text-neutral-500">{label}</span>{children}</label>;
+function FmField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block space-y-2"><span className="text-sm font-semibold text-slate-700">{label}</span>{children}</label>;
 }
