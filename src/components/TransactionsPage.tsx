@@ -190,7 +190,15 @@ export default function TransactionsPage() {
 
   function renderTable(rows: Txn[]) {
     return (
-      <table className="w-full min-w-[640px] border-collapse">
+      <table className="w-full min-w-[640px] border-collapse table-fixed">
+        <colgroup>
+          <col className="w-[10%]" />
+          <col className="w-[22%]" />
+          <col className="w-[18%]" />
+          <col className="w-[14%]" />
+          <col className="w-[16%]" />
+          <col className="w-16" />
+        </colgroup>
         <thead>
           <tr>
             <Th onClick={() => toggleSort('date')} active={sortKey === 'date'} dir={sortDir}>Date</Th>
