@@ -480,10 +480,8 @@ export default function TransactionsPage() {
   }, [availableCategories]);
 
   const allCatsSelected = availableCategories.length > 0 && availableCategories.every(c => fCats.includes(c));
-  const noCatsSelected = fCats.length === 0;
-
   const sorted = useMemo(() => {
-    const filtered = noCatsSelected ? [] : allCatsSelected ? txns : txns.filter(t => fCats.includes(t.category));
+    const filtered = (fCats.length === 0 || allCatsSelected) ? txns : txns.filter(t => fCats.includes(t.category));
     return [...filtered].sort((a, b) => {
       const x = sortKey === 'date' ? a.date.localeCompare(b.date) : sortKey === 'cat' ? a.category.localeCompare(b.category) : a.amountCents - b.amountCents;
       return x * sortDir;
@@ -679,7 +677,7 @@ export default function TransactionsPage() {
         </thead>
         <tbody>
           {rows.length === 0 ? (
-            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">{noCatsSelected ? 'No categories selected.' : 'No transactions match these filters.'}</td></tr>
+            <tr><td colSpan={7} className="py-12 text-center text-sm text-slate-400">No transactions match these filters.</td></tr>
           ) : rows.map(renderRow)}
         </tbody>
       </table>
