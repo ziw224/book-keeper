@@ -234,10 +234,10 @@ export default function TransactionsPage() {
         <colgroup>
           <col className="w-[8%]" />
           <col className="w-[14%]" />
-          <col className="w-[12%]" />
+          <col className="w-[15%]" />
           <col className="w-[9%]" />
           <col className="w-[10%]" />
-          <col className="w-[30%]" />
+          <col className="w-[27%]" />
           <col className="w-14" />
         </colgroup>
         <thead>
