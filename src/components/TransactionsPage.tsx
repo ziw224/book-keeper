@@ -5,6 +5,7 @@ import { ListChecks, Plus, ArrowUp, ArrowDown, Pencil, Trash2, ChevronDown, Chev
 import { formatUSD, toCents } from '@/lib/money';
 import { SUGGESTED_CATEGORIES, categoryColor, categoryIcon } from '@/lib/categories';
 import type { StatementCycle } from '@/lib/cycle';
+import CalendarPicker, { CalendarNotice } from '@/components/CalendarPicker';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -23,6 +24,7 @@ async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
 }
 
 const todayYMD = () => new Date().toISOString().slice(0, 10);
+const pad2 = (n: number) => String(n).padStart(2, '0');
 const centsToInput = (c: number) => (c / 100).toFixed(2);
 function calendarMonth(dateStr: string) {
   const [, m] = dateStr.split('-').map(Number);
@@ -431,6 +433,33 @@ export default function TransactionsPage() {
     ...cycles.map(c => ({ value: c.key, label: c.label })),
   ];
 
+  // Calendar notices (paycheck + statement close days)
+  const calendarNotices = useMemo(() => {
+    const out: CalendarNotice[] = [];
+    const now = new Date();
+    for (let offset = -2; offset <= 2; offset++) {
+      const y = now.getFullYear(), m = now.getMonth() + offset;
+      const dt = new Date(y, m, 15);
+      out.push({ date: `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-15`, label: 'Paycheck', color: '#10b981' });
+      const last = new Date(dt.getFullYear(), dt.getMonth() + 1, 0);
+      out.push({ date: `${last.getFullYear()}-${pad2(last.getMonth() + 1)}-${pad2(last.getDate())}`, label: 'Paycheck', color: '#10b981' });
+    }
+    const relevantCards = fCard ? cards.filter(c => c.id === fCard) : cards;
+    for (const c of relevantCards) {
+      if (c.type === 'credit' && c.statementCloseDay) {
+        for (let offset = -1; offset <= 2; offset++) {
+          const m = now.getMonth() + 1 + offset;
+          const y = now.getFullYear() + Math.floor((m - 1) / 12);
+          const rm = ((m - 1) % 12 + 12) % 12 + 1;
+          const dim = new Date(y, rm, 0).getDate();
+          const cd = Math.min(c.statementCloseDay, dim);
+          out.push({ date: `${y}-${pad2(rm)}-${pad2(cd)}`, label: `${c.name} closes`, color: '#6366f1' });
+        }
+      }
+    }
+    return out;
+  }, [cards, fCard]);
+
   function renderRow(t: Txn) {
     if (t.id === pending) {
       return (
@@ -558,9 +587,13 @@ export default function TransactionsPage() {
           <CategoryDropdown selected={fCats} onChange={setFCats} />
 
           <div className="flex items-center gap-3">
-            <input type="date" value={fFrom} onChange={e => setFFrom(e.target.value)} className={dateCls} aria-label="From date" />
+            <div className="w-44">
+              <CalendarPicker value={fFrom} onChange={setFFrom} notices={calendarNotices} placeholder="Start date" />
+            </div>
             <span className="text-slate-400">–</span>
-            <input type="date" value={fTo} onChange={e => setFTo(e.target.value)} className={dateCls} aria-label="To date" />
+            <div className="w-44">
+              <CalendarPicker value={fTo} onChange={setFTo} notices={calendarNotices} placeholder="End date" />
+            </div>
           </div>
 
           <button onClick={showAllDates} className={quickBtnCls}>All time</button>
@@ -589,7 +622,7 @@ export default function TransactionsPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <FmField label="Merchant"><input value={fmMerchant} onChange={e => setFmMerchant(e.target.value)} placeholder="e.g. Whole Foods" className={fmInputCls} autoFocus /></FmField>
               <FmField label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={fmInputCls} /></FmField>
-              <FmField label="Date"><input type="date" value={fmDate} onChange={e => setFmDate(e.target.value)} className={fmInputCls} /></FmField>
+              <FmField label="Date"><CalendarPicker value={fmDate} onChange={setFmDate} notices={calendarNotices} /></FmField>
               <FmField label="Card">
                 <ModalDropdown
                   value={fmCard}
@@ -679,7 +712,6 @@ export default function TransactionsPage() {
   );
 }
 
-const dateCls = 'h-12 w-44 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold shadow-sm outline-none transition focus:border-indigo-300 focus:ring-4 focus:ring-indigo-100';
 const quickBtnCls = 'h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold shadow-sm hover:bg-slate-50 transition';
 const fmInputCls = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100';
 const thCls = 'px-5 py-3 text-left text-sm font-semibold text-slate-500';
