@@ -621,7 +621,7 @@ export default function TransactionsPage() {
     setFCats(prev => {
       const valid = prev.filter(c => availableCategories.includes(c));
       if (valid.length === prev.length) return prev;
-      return valid;
+      return valid.length > 0 ? valid : [...availableCategories];
     });
   }, [availableCategories]);
 
