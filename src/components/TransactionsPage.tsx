@@ -129,12 +129,12 @@ function Dropdown({ value, label, options, onChange, icon: Icon, disabled, place
   }, [open]);
 
   return (
-    <div ref={ref} className="relative min-w-[180px]">
+    <div ref={ref} className="relative w-[160px]">
       <button
         onClick={() => !disabled && setOpen(o => !o)}
         disabled={disabled}
         aria-expanded={open}
-        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+        className={`flex h-9 w-full items-center justify-between rounded-lg border bg-white px-3 text-left text-xs font-semibold shadow-sm transition ${
           disabled ? 'opacity-40 cursor-not-allowed' :
           open ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
         }`}
@@ -203,11 +203,11 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
     : `${selected.length} categories`;
 
   return (
-    <div ref={ref} className="relative min-w-[220px]">
+    <div ref={ref} className="relative w-[180px]">
       <button
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+        className={`flex h-9 w-full items-center justify-between rounded-lg border bg-white px-3 text-left text-xs font-semibold shadow-sm transition ${
           open ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
         }`}
       >
@@ -289,11 +289,11 @@ function MerchantFilterDropdown({ value, onChange, merchants }: {
   const filtered = merchants.filter(m => m.name.toLowerCase().includes(query.toLowerCase()));
 
   return (
-    <div ref={ref} className="relative min-w-[200px]">
+    <div ref={ref} className="relative w-[180px]">
       <button
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+        className={`flex h-9 w-full items-center justify-between rounded-lg border bg-white px-3 text-left text-xs font-semibold shadow-sm transition ${
           open ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
         }`}
       >
@@ -877,8 +877,8 @@ export default function TransactionsPage() {
       </div>
 
       {/* Filter bar */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
+      <section className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+        <div className="flex flex-nowrap items-center gap-2 overflow-x-auto">
           <Dropdown
             value={fCycle}
             label={cycles.find(c => c.key === fCycle)?.label || cycleOptions[0].label}
@@ -892,11 +892,11 @@ export default function TransactionsPage() {
           <MerchantFilterDropdown value={fMerchant} onChange={setFMerchant} merchants={merchantStats} />
 
           <div className="flex items-center gap-3">
-            <div className="w-44">
+            <div className="w-36">
               <CalendarPicker value={fFrom} onChange={v => { setFFrom(v); setDatePreset(null); }} notices={calendarNotices} placeholder="Start date" />
             </div>
             <span className="text-slate-400">–</span>
-            <div className="w-44">
+            <div className="w-36">
               <CalendarPicker value={fTo} onChange={v => { setFTo(v); setDatePreset(null); }} notices={calendarNotices} placeholder="End date" />
             </div>
           </div>
@@ -1035,7 +1035,7 @@ export default function TransactionsPage() {
   );
 }
 
-const quickBtnCls = 'h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold shadow-sm hover:bg-slate-50 transition';
+const quickBtnCls = 'h-9 rounded-lg border border-slate-200 bg-white px-2.5 text-xs font-bold shadow-sm hover:bg-slate-50 transition whitespace-nowrap';
 const fmInputCls = 'w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100';
 const thCls = 'px-5 py-3 text-left text-sm font-semibold text-slate-500';
 

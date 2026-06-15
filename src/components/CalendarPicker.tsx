@@ -117,7 +117,7 @@ export default function CalendarPicker({ value, onChange, notices = [], placehol
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+        className={`flex h-9 w-full items-center justify-between rounded-lg border bg-white px-3 text-left text-xs font-semibold shadow-sm transition ${
           open ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
         }`}
       >
