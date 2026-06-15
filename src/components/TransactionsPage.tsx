@@ -486,7 +486,7 @@ export default function TransactionsPage() {
       const x = sortKey === 'date' ? a.date.localeCompare(b.date) : sortKey === 'cat' ? a.category.localeCompare(b.category) : a.amountCents - b.amountCents;
       return x * sortDir;
     });
-  }, [txns, sortKey, sortDir, fCats, allCatsSelected, noCatsSelected]);
+  }, [txns, sortKey, sortDir, fCats, allCatsSelected]);
 
   const hasDebit = useMemo(() => cards.some(c => c.type === 'debit'), [cards]);
   const creditTxns = useMemo(() => sorted.filter(t => t.card.type === 'credit'), [sorted]);
