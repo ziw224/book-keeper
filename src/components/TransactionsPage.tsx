@@ -13,6 +13,7 @@ interface Card { id: string; name: string; issuer: string; last4: string; type: 
 interface Txn {
   id: string; cardId: string; date: string; merchant: string; amountCents: number;
   category: string; notes?: string | null; cycleKey: string | null; cycleLabel: string | null;
+  recurringRuleId?: string | null; isRecurringGenerated?: boolean;
   card: { id: string; name: string; type: string; statementCloseDay: number | null };
 }
 type SortKey = 'date' | 'amt' | 'cat';
@@ -294,6 +295,10 @@ export default function TransactionsPage() {
   const [fmCat, setFmCat] = useState('');
   const [fmCard, setFmCard] = useState('');
   const [fmNotes, setFmNotes] = useState('');
+  const [fmRecurring, setFmRecurring] = useState(false);
+  const [fmRecurFreq, setFmRecurFreq] = useState('monthly');
+  const [fmRecurDay, setFmRecurDay] = useState('');
+  const [fmRecurEnd, setFmRecurEnd] = useState('');
   const [formErr, setFormErr] = useState('');
   const [saving, setSaving] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
@@ -309,7 +314,10 @@ export default function TransactionsPage() {
     toastTimer.current = setTimeout(() => setToast(null), 2500);
   }
 
-  useEffect(() => { apiFetch<Card[]>('/api/cards').then(setCards).catch(() => setError('Could not load cards.')); }, []);
+  useEffect(() => {
+    apiFetch<Card[]>('/api/cards').then(setCards).catch(() => setError('Could not load cards.'));
+    apiFetch('/api/recurring', { method: 'POST' }).catch(() => {});
+  }, []);
 
   const selectedCardIsDebit = useMemo(() => {
     if (!fCard) return false;
@@ -379,13 +387,16 @@ export default function TransactionsPage() {
   function openAdd() {
     setEditing(null); setFmDate(todayYMD()); setFmMerchant(''); setFmAmount('');
     setFmCat(''); setFmNotes(''); setFormErr('');
+    setFmRecurring(false); setFmRecurFreq('monthly'); setFmRecurDay(''); setFmRecurEnd('');
     const sorted = getSortedCards(cards);
     setFmCard(fCard || sorted[0]?.id || '');
     setShowForm(true);
   }
   function openEdit(t: Txn) {
     setEditing(t.id); setFmDate(t.date); setFmMerchant(t.merchant); setFmAmount(centsToInput(t.amountCents));
-    setFmCat(t.category); setFmCard(t.cardId); setFmNotes(t.notes ?? ''); setFormErr(''); setShowForm(true);
+    setFmCat(t.category); setFmCard(t.cardId); setFmNotes(t.notes ?? ''); setFormErr('');
+    setFmRecurring(false); setFmRecurFreq('monthly'); setFmRecurDay(''); setFmRecurEnd('');
+    setShowForm(true);
   }
 
   async function save() {
@@ -398,7 +409,14 @@ export default function TransactionsPage() {
     if (!fmCat.trim()) return setFormErr('Pick or type a category.');
     setSaving(true);
     try {
-      const body = JSON.stringify({ cardId: fmCard, date: fmDate, merchant: fmMerchant.trim(), amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null });
+      const payload: Record<string, unknown> = { cardId: fmCard, date: fmDate, merchant: fmMerchant.trim(), amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null };
+      if (fmRecurring && !editing) {
+        payload.recurring = true;
+        payload.recurringFrequency = fmRecurFreq;
+        payload.recurringDay = fmRecurDay ? parseInt(fmRecurDay, 10) : parseInt(fmDate.split('-')[2], 10);
+        if (fmRecurEnd) payload.recurringEndDate = fmRecurEnd;
+      }
+      const body = JSON.stringify(payload);
       if (editing) await apiFetch(`/api/transactions/${editing}`, { method: 'PATCH', body });
       else await apiFetch('/api/transactions', { method: 'POST', body });
       rememberCard(fmCard);
@@ -479,7 +497,10 @@ export default function TransactionsPage() {
     return (
       <tr key={t.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50/50">
         <td className="px-5 py-3.5 text-sm font-medium text-slate-500">{t.date.slice(5)}</td>
-        <td className="px-5 py-3.5 text-sm font-semibold">{t.merchant}</td>
+        <td className="px-5 py-3.5 text-sm font-semibold">
+          {t.merchant}
+          {t.recurringRuleId && <span className="ml-1.5 text-xs" title="Recurring">🔁</span>}
+        </td>
         <td className="px-5 py-3.5 text-sm">
           <span className="mr-1">{categoryIcon(t.category)}</span>
           {t.category}
@@ -646,6 +667,33 @@ export default function TransactionsPage() {
               </FmField>
               <FmField label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="Optional notes" className={fmInputCls} /></FmField>
             </div>
+
+            {/* Recurring toggle */}
+            {!editing && (
+              <div className="mt-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={fmRecurring} onChange={e => setFmRecurring(e.target.checked)} className="h-4 w-4 rounded border-slate-300 text-indigo-600" />
+                  <span className="text-sm font-semibold text-slate-700">🔁 Recurring transaction</span>
+                </label>
+                {fmRecurring && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-xl bg-slate-50 p-4">
+                    <FmField label="Frequency">
+                      <select value={fmRecurFreq} onChange={e => setFmRecurFreq(e.target.value)} className={fmInputCls}>
+                        <option value="monthly">Monthly</option>
+                        <option value="yearly">Yearly</option>
+                      </select>
+                    </FmField>
+                    <FmField label="Recurring day">
+                      <input type="number" min={1} max={31} value={fmRecurDay} onChange={e => setFmRecurDay(e.target.value)} placeholder={fmDate.split('-')[2] || '15'} className={fmInputCls} />
+                    </FmField>
+                    <FmField label="End date (optional)">
+                      <CalendarPicker value={fmRecurEnd} onChange={setFmRecurEnd} placeholder="No end date" />
+                    </FmField>
+                  </div>
+                )}
+              </div>
+            )}
+
             {formErr && <p className="mt-3 text-xs text-rose-600">{formErr}</p>}
             <div className="mt-6 flex items-center justify-between">
               <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-500">

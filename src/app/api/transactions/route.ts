@@ -52,7 +52,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const parsed = transactionCreateSchema.safeParse(body)
+  const { recurring, recurringFrequency, recurringDay, recurringEndDate, ...txnBody } = body
+
+  const parsed = transactionCreateSchema.safeParse(txnBody)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.format() }, { status: 400 })
   }
@@ -62,8 +64,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Card not found' }, { status: 404 })
   }
 
+  let recurringRuleId: string | undefined
+
+  if (recurring) {
+    const rule = await prisma.recurringRule.create({
+      data: {
+        merchant: parsed.data.merchant,
+        amountCents: parsed.data.amountCents,
+        category: parsed.data.category,
+        cardId: parsed.data.cardId,
+        notes: parsed.data.notes,
+        frequency: recurringFrequency || 'monthly',
+        recurringDay: recurringDay ?? parseInt(parsed.data.date.split('-')[2], 10),
+        startDate: parsed.data.date,
+        endDate: recurringEndDate || null,
+      },
+    })
+    recurringRuleId = rule.id
+  }
+
   const txn = await prisma.transaction.create({
-    data: parsed.data,
+    data: {
+      ...parsed.data,
+      recurringRuleId: recurringRuleId || null,
+      isRecurringGenerated: false,
+      recurringOccurrenceDate: recurringRuleId ? parsed.data.date : null,
+    },
     include: { card: { select: { id: true, name: true, type: true, statementCloseDay: true } } },
   })
 
