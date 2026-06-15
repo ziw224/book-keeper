@@ -422,23 +422,17 @@ export default function TransactionsPage() {
   }
 
   return (
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <ListChecks className="h-7 w-7 text-slate-500" />
-            <h1 className="text-4xl font-bold tracking-tight">Transactions</h1>
-          </div>
-          <p className="mt-3 text-lg text-slate-500">Review spending by card, cycle, category, and date range.</p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-white px-5 py-3 text-sm font-bold text-indigo-600 shadow-sm hover:bg-indigo-50 transition"
-        >
-          <Plus className="h-4 w-4" /> Add Transaction
-        </button>
-      </div>
+    <div className="space-y-3">
+      {/* Floating add button */}
+      <button
+        onClick={openAdd}
+        className="group fixed right-8 top-28 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg transition-all duration-200 hover:w-48 hover:px-5"
+      >
+        <Plus className="h-5 w-5 shrink-0" />
+        <span className="ml-0 max-w-0 overflow-hidden whitespace-nowrap text-sm font-semibold opacity-0 transition-all duration-200 group-hover:ml-2 group-hover:max-w-36 group-hover:opacity-100">
+          Add Transaction
+        </span>
+      </button>
 
       {/* Card tabs */}
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
