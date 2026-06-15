@@ -6,6 +6,7 @@ import { formatUSD, toCents } from '@/lib/money';
 import { SUGGESTED_CATEGORIES, categoryColor, categoryIcon, getAllCategories, addCustomCategory } from '@/lib/categories';
 import type { StatementCycle } from '@/lib/cycle';
 import CalendarPicker, { CalendarNotice } from '@/components/CalendarPicker';
+import { findCanonicalMerchant } from '@/lib/merchant';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -266,6 +267,125 @@ function CategoryDropdown({ selected, onChange, availableCategories }: { selecte
   );
 }
 
+/* ── Merchant filter dropdown ─────────────────────────────── */
+
+function MerchantFilterDropdown({ value, onChange, merchants }: {
+  value: string; onChange: (v: string) => void;
+  merchants: { name: string; count: number; total: number }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function esc(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', esc);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
+  }, [open]);
+
+  const filtered = merchants.filter(m => m.name.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div ref={ref} className="relative min-w-[200px]">
+      <button
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className={`flex h-12 w-full items-center justify-between rounded-xl border bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+          open ? 'border-indigo-300 ring-4 ring-indigo-100' : 'border-slate-200 hover:border-slate-300'
+        }`}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <Search className="h-4 w-4 shrink-0 text-slate-500" />
+          <span className="truncate">{value || 'All merchants'}</span>
+        </span>
+        <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-[calc(100%+8px)] z-50 w-72 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
+          <div className="flex items-center gap-2 border-b border-slate-100 px-3 py-2.5">
+            <Search className="h-4 w-4 text-slate-400" />
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search merchants..." className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400" autoFocus />
+          </div>
+          <div className="max-h-64 overflow-auto p-1">
+            <button
+              onClick={() => { onChange(''); setOpen(false); setQuery(''); }}
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${!value ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
+            >
+              <span>All merchants</span>
+              {!value && <Check className="h-4 w-4 text-indigo-600" />}
+            </button>
+            <div className="my-1 border-t border-slate-100" />
+            {filtered.map(m => (
+              <button
+                key={m.name}
+                onClick={() => { onChange(m.name); setOpen(false); setQuery(''); }}
+                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition hover:bg-slate-50 ${value === m.name ? 'font-semibold text-indigo-600' : 'text-slate-700'}`}
+              >
+                <span className="truncate">{m.name}</span>
+                <span className="ml-2 shrink-0 text-xs text-slate-400">{m.count} · {formatUSD(m.total)}</span>
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-3 py-2 text-xs text-slate-400">No merchants found</p>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Merchant autocomplete for modal ─────────────────────── */
+
+function MerchantAutocomplete({ value, onChange, suggestions }: {
+  value: string; onChange: (v: string) => void; suggestions: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function close(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const filtered = value.length >= 1
+    ? suggestions.filter(s => s.toLowerCase().includes(value.toLowerCase()) && s !== value)
+    : [];
+  const showDropdown = focused && filtered.length > 0;
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        value={value}
+        onChange={e => { onChange(e.target.value); setOpen(true); }}
+        onFocus={() => { setFocused(true); setOpen(true); }}
+        onBlur={() => setTimeout(() => setFocused(false), 150)}
+        placeholder="e.g. Whole Foods"
+        className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+      />
+      {showDropdown && open && (
+        <div className="absolute left-0 top-[calc(100%+4px)] z-[60] max-h-40 w-full overflow-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
+          {filtered.slice(0, 8).map(s => (
+            <button
+              key={s}
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onChange(s); setOpen(false); }}
+              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Category picker with custom emoji support ───────────── */
 
 function CategoryPickerModal({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -399,6 +519,7 @@ export default function TransactionsPage() {
   const [fCard, setFCard] = useState('');
   const [fCycle, setFCycle] = useState('');
   const [fCats, setFCats] = useState<string[]>([]);
+  const [fMerchant, setFMerchant] = useState('');
   const [fFrom, setFFrom] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
@@ -472,6 +593,23 @@ export default function TransactionsPage() {
     return [...cats].sort();
   }, [txns]);
 
+  const merchantStats = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    for (const t of txns) {
+      const s = map.get(t.merchant) || { count: 0, total: 0 };
+      s.count += 1;
+      s.total += t.amountCents;
+      map.set(t.merchant, s);
+    }
+    return [...map.entries()]
+      .map(([name, s]) => ({ name, ...s }))
+      .sort((a, b) => b.total - a.total);
+  }, [txns]);
+
+  const allMerchantNames = useMemo(() => {
+    return [...new Set(txns.map(t => t.merchant))].sort();
+  }, [txns]);
+
   useEffect(() => {
     setFCats(prev => {
       const valid = prev.filter(c => availableCategories.includes(c));
@@ -490,12 +628,13 @@ export default function TransactionsPage() {
 
   const allCatsSelected = availableCategories.length > 0 && availableCategories.every(c => fCats.includes(c));
   const sorted = useMemo(() => {
-    const filtered = fCats.length === 0 ? [] : allCatsSelected ? txns : txns.filter(t => fCats.includes(t.category));
+    let filtered = fCats.length === 0 ? [] : allCatsSelected ? txns : txns.filter(t => fCats.includes(t.category));
+    if (fMerchant) filtered = filtered.filter(t => t.merchant === fMerchant);
     return [...filtered].sort((a, b) => {
       const x = sortKey === 'date' ? a.date.localeCompare(b.date) : sortKey === 'cat' ? a.category.localeCompare(b.category) : a.amountCents - b.amountCents;
       return x * sortDir;
     });
-  }, [txns, sortKey, sortDir, fCats, allCatsSelected]);
+  }, [txns, sortKey, sortDir, fCats, allCatsSelected, fMerchant]);
 
   const hasDebit = useMemo(() => cards.some(c => c.type === 'debit'), [cards]);
   const creditTxns = useMemo(() => sorted.filter(t => t.card.type === 'credit'), [sorted]);
@@ -552,7 +691,8 @@ export default function TransactionsPage() {
     if (!fmCat.trim()) return setFormErr('Pick or type a category.');
     setSaving(true);
     try {
-      const payload: Record<string, unknown> = { cardId: fmCard, date: fmDate, merchant: fmMerchant.trim(), amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null };
+      const canonicalMerchant = findCanonicalMerchant(fmMerchant, allMerchantNames);
+      const payload: Record<string, unknown> = { cardId: fmCard, date: fmDate, merchant: canonicalMerchant, amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null };
       if (fmRecurring && !editing) {
         payload.recurring = true;
         payload.recurringFrequency = fmRecurFreq;
@@ -749,6 +889,7 @@ export default function TransactionsPage() {
           />
 
           <CategoryDropdown selected={fCats} onChange={setFCats} availableCategories={availableCategories} />
+          <MerchantFilterDropdown value={fMerchant} onChange={setFMerchant} merchants={merchantStats} />
 
           <div className="flex items-center gap-3">
             <div className="w-44">
@@ -784,7 +925,7 @@ export default function TransactionsPage() {
               <button onClick={() => setShowForm(false)} className="rounded-xl p-2 text-slate-400 hover:bg-slate-100"><X className="h-5 w-5" /></button>
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FmField label="Merchant"><input value={fmMerchant} onChange={e => setFmMerchant(e.target.value)} placeholder="e.g. Whole Foods" className={fmInputCls} autoFocus /></FmField>
+              <FmField label="Merchant"><MerchantAutocomplete value={fmMerchant} onChange={setFmMerchant} suggestions={allMerchantNames} /></FmField>
               <FmField label="Amount (negative for refund)"><input value={fmAmount} onChange={e => setFmAmount(e.target.value)} inputMode="decimal" placeholder="12.50 or 10+5.99" className={fmInputCls} /></FmField>
               <FmField label="Date"><CalendarPicker value={fmDate} onChange={setFmDate} notices={calendarNotices} /></FmField>
               <FmField label="Card">
