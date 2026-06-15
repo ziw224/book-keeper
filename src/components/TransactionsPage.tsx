@@ -793,7 +793,7 @@ export default function TransactionsPage() {
         <td className="px-5 py-3.5 text-sm">
           <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-600">{periodLabel(t)}</span>
         </td>
-        <td className={`px-5 py-3.5 text-sm text-right font-bold ${t.amountCents < 0 ? 'text-emerald-600' : ''}`}>{formatUSD(t.amountCents)}</td>
+        <td className={`px-5 py-3.5 text-sm text-right font-semibold ${t.amountCents < 0 ? 'text-red-600' : t.amountCents > 0 ? 'text-emerald-600' : ''}`}>{formatUSD(t.amountCents)}</td>
         <td className="px-5 py-3.5 text-sm text-slate-500 break-words">{t.notes || ''}</td>
         <td className="px-5 py-3.5 text-right">
           <span className="inline-flex gap-1 text-slate-400">
@@ -1007,7 +1007,7 @@ export default function TransactionsPage() {
       )}
 
       <p className="text-sm font-medium text-slate-500">
-        {loading ? 'Loading…' : `Showing ${sorted.length} transaction${sorted.length === 1 ? '' : 's'} · ${formatUSD(net)} net`}
+        {loading ? 'Loading…' : <>Showing {sorted.length} transaction{sorted.length === 1 ? '' : 's'} · <span className={net < 0 ? 'text-red-600' : net > 0 ? 'text-emerald-600' : ''}>{formatUSD(net)} net</span></>}
       </p>
 
       {/* Table */}
@@ -1017,14 +1017,14 @@ export default function TransactionsPage() {
             <div className="border-b border-slate-100 px-5 py-4">
               <button onClick={() => setCreditOpen(o => !o)} className="flex items-center gap-1.5 text-sm font-bold text-slate-700 hover:text-slate-900">
                 {creditOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                Credit cards ({creditTxns.length}) · {formatUSD(creditNet)} net
+                Credit cards ({creditTxns.length}) · <span className={creditNet < 0 ? 'text-red-600' : creditNet > 0 ? 'text-emerald-600' : ''}>{formatUSD(creditNet)}</span>
               </button>
             </div>
             {creditOpen && renderTable(creditTxns)}
             <div className="border-b border-slate-100 px-5 py-4">
               <button onClick={() => setDebitOpen(o => !o)} className="flex items-center gap-1.5 text-sm font-bold text-slate-700 hover:text-slate-900">
                 {debitOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                Debit cards ({debitTxns.length}) · {formatUSD(debitNet)} net
+                Debit cards ({debitTxns.length}) · <span className={debitNet < 0 ? 'text-red-600' : debitNet > 0 ? 'text-emerald-600' : ''}>{formatUSD(debitNet)}</span>
               </button>
             </div>
             {debitOpen && renderTable(debitTxns)}

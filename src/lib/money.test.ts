@@ -41,10 +41,10 @@ describe('fromCents', () => {
 })
 
 describe('formatUSD', () => {
-  it('formats positive', () => {
-    expect(formatUSD(123456)).toBe('$1,234.56')
+  it('formats positive with plus sign', () => {
+    expect(formatUSD(123456)).toBe('+$1,234.56')
   })
-  it('formats negative (refund)', () => {
+  it('formats negative with minus sign', () => {
     expect(formatUSD(-500)).toBe('-$5.00')
   })
   it('formats zero', () => {

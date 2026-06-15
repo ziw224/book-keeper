@@ -29,5 +29,7 @@ export function formatUSD(cents: number): string {
   const dollars = Math.floor(abs / 100)
   const remaining = abs % 100
   const formatted = `$${dollars.toLocaleString('en-US')}.${String(remaining).padStart(2, '0')}`
-  return cents < 0 ? `-${formatted}` : formatted
+  if (cents < 0) return `-${formatted}`
+  if (cents > 0) return `+${formatted}`
+  return formatted
 }
