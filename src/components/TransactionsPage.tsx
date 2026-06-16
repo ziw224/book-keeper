@@ -486,7 +486,8 @@ function TxnRowComp({ t, onEdit, onDelete, pending, onConfirmDelete, onCancelDel
     <div className={`flex items-center gap-3 px-4 py-2.5 text-[13px] transition hover:bg-neutral-50/50 ${kind === 'adjustment' ? 'bg-amber-50/30' : ''} ${upcoming ? 'opacity-50' : ''}`}>
       <span className="w-12 shrink-0 text-neutral-500">{t.date.slice(5)}</span>
       <span className="min-w-0 flex-1 truncate font-medium text-neutral-900">
-        {t.merchant}
+        {kind === 'adjustment' ? `${t.card.name} •••• ${t.card.last4}` : t.merchant}
+        {kind === 'adjustment' && <span className="ml-1 text-xs text-neutral-400">Statement Adj.</span>}
         {upcoming && <span className="ml-1 text-xs text-sky-600 bg-sky-50 px-1 py-0.5 rounded-md">Upcoming</span>}
         {t.recurringRuleId && <span className="ml-1 text-xs text-violet-600 bg-violet-50 px-1 py-0.5 rounded-md">recurring</span>}
         {kind === 'adjustment' && (
@@ -495,7 +496,7 @@ function TxnRowComp({ t, onEdit, onDelete, pending, onConfirmDelete, onCancelDel
             : <span className="ml-1 bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md text-[11px] font-bold">Pending</span>
         )}
       </span>
-      {showCard && <span className="shrink-0 text-xs text-neutral-400 truncate max-w-[120px]">{t.card.name} •••• {t.card.last4}</span>}
+      {showCard && kind !== 'adjustment' && <span className="shrink-0 text-xs text-neutral-400 truncate max-w-[120px]">{t.card.name} •••• {t.card.last4}</span>}
       <span className="shrink-0 text-xs text-neutral-500">{categoryIcon(t.category)} {t.category}</span>
       <span className={`shrink-0 w-24 text-right font-semibold ${upcoming ? 'text-neutral-400' : t.amountCents < 0 ? 'text-rose-600' : t.amountCents > 0 ? 'text-emerald-600' : ''}`}>{formatUSD(t.amountCents)}</span>
       <span className="shrink-0 w-16 text-right">
