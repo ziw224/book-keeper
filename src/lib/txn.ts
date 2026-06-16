@@ -26,6 +26,7 @@ function todayStr(): string {
 }
 
 export function isUpcoming(t: TxnRow): boolean {
+  if (t.isStatementAdjustment) return false
   return t.date > todayStr()
 }
 
