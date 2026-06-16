@@ -11,7 +11,7 @@ import { listRecentCycles } from '@/lib/cycle';
 const navLinks = [
   { href: '/', label: 'Dashboard' },
   { href: '/transactions', label: 'Transactions' },
-  { href: '/statements', label: 'Statements' },
+  { href: '/calendar', label: 'Calendar' },
 ];
 
 interface Card {
