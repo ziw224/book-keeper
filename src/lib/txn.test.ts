@@ -1,19 +1,26 @@
 import { describe, it, expect } from 'vitest'
-import { kindOf, computeSummary, rollup, visibleRows } from './txn'
+import { kindOf, computeSummary, rollup, visibleRows, isUpcoming } from './txn'
 
-const expense = (amountCents: number, category = 'Dining', merchant = 'Test') =>
-  ({ id: '1', merchant, amountCents, category, date: '2026-06-01', isStatementAdjustment: false })
+const expense = (amountCents: number, category = 'Dining', merchant = 'Test', date = '2026-06-01') =>
+  ({ id: `e-${date}-${merchant}`, merchant, amountCents, category, date, isStatementAdjustment: false })
 
-const income = (amountCents: number) =>
-  ({ id: '2', merchant: 'Paycheck', amountCents, category: 'Other', date: '2026-06-01', isStatementAdjustment: false })
+const income = (amountCents: number, date = '2026-06-01') =>
+  ({ id: `i-${date}`, merchant: 'Paycheck', amountCents, category: 'Other', date, isStatementAdjustment: false })
 
 const adjustment = (amountCents: number) =>
   ({ id: '3', merchant: 'Statement Adjustment', amountCents, category: 'Other', date: '2026-06-01', isStatementAdjustment: true, paymentStatus: 'pending' })
+
+const futureDate = '2099-12-31'
 
 describe('kindOf', () => {
   it('classifies expense', () => expect(kindOf(expense(-1000))).toBe('expense'))
   it('classifies income', () => expect(kindOf(income(3000))).toBe('income'))
   it('classifies adjustment', () => expect(kindOf(adjustment(-500))).toBe('adjustment'))
+})
+
+describe('isUpcoming', () => {
+  it('past date is not upcoming', () => expect(isUpcoming(expense(-1000, 'Dining', 'X', '2020-01-01'))).toBe(false))
+  it('future date is upcoming', () => expect(isUpcoming(expense(-1000, 'Dining', 'X', futureDate))).toBe(true))
 })
 
 describe('computeSummary', () => {
@@ -31,6 +38,28 @@ describe('computeSummary', () => {
     const s = computeSummary(rows)
     expect(s.spent).toBe(5000)
     expect(s.income).toBe(1500)
+  })
+
+  it('excludes upcoming expense from spent/count', () => {
+    const rows = [expense(-5000), expense(-3000, 'Dining', 'Future', futureDate)]
+    const s = computeSummary(rows)
+    expect(s.spent).toBe(5000)
+    expect(s.count).toBe(1)
+  })
+
+  it('excludes upcoming income from income/count', () => {
+    const rows = [income(10000), income(5000, futureDate)]
+    const s = computeSummary(rows)
+    expect(s.income).toBe(10000)
+    expect(s.count).toBe(1)
+  })
+
+  it('excludes upcoming recurring from all totals', () => {
+    const recurring = { ...expense(-2000, 'Dining', 'Netflix', futureDate), recurringRuleId: 'rule1' }
+    const rows = [expense(-5000), recurring]
+    const s = computeSummary(rows)
+    expect(s.spent).toBe(5000)
+    expect(s.count).toBe(1)
   })
 })
 
@@ -61,6 +90,28 @@ describe('rollup', () => {
 
   it('returns empty for none grouping', () => {
     expect(rollup([expense(-1000)], 'none')).toEqual([])
+  })
+
+  it('excludes upcoming from group total/count but keeps in rows', () => {
+    const rows = [
+      expense(-5000, 'Dining', 'Past'),
+      expense(-3000, 'Dining', 'Future', futureDate),
+    ]
+    const groups = rollup(rows, 'category')
+    expect(groups).toHaveLength(1)
+    expect(groups[0].total).toBe(5000)
+    expect(groups[0].count).toBe(1)
+    expect(groups[0].rows).toHaveLength(2)
+  })
+
+  it('sorts upcoming rows to end of group', () => {
+    const rows = [
+      expense(-5000, 'Dining', 'Past', '2026-06-01'),
+      expense(-3000, 'Dining', 'Future', futureDate),
+    ]
+    const groups = rollup(rows, 'category')
+    expect(groups[0].rows[0].merchant).toBe('Past')
+    expect(groups[0].rows[1].merchant).toBe('Future')
   })
 })
 

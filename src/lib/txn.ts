@@ -20,6 +20,15 @@ export function kindOf(t: TxnRow): TxnKind {
   return t.amountCents < 0 ? 'expense' : 'income'
 }
 
+function todayStr(): string {
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+}
+
+export function isUpcoming(t: TxnRow): boolean {
+  return t.date > todayStr()
+}
+
 export interface ViewState {
   showIncome: boolean
   showAdjustments: boolean
@@ -46,6 +55,7 @@ export interface Summary {
 export function computeSummary(rows: TxnRow[]): Summary {
   let spent = 0, income = 0, count = 0
   for (const t of rows) {
+    if (isUpcoming(t)) continue
     const kind = kindOf(t)
     if (kind === 'adjustment') continue
     if (kind === 'expense') { spent += -t.amountCents; count++ }
@@ -69,7 +79,7 @@ export type GroupBy = 'category' | 'merchant' | 'card' | 'none'
 export function rollup(expenses: TxnRow[], groupBy: GroupBy): RollupGroup[] {
   if (groupBy === 'none') return []
 
-  const map = new Map<string, { label: string; color: string; total: number; rows: TxnRow[] }>()
+  const map = new Map<string, { label: string; color: string; total: number; count: number; rows: TxnRow[] }>()
 
   for (const t of expenses) {
     if (kindOf(t) !== 'expense') continue
@@ -90,8 +100,12 @@ export function rollup(expenses: TxnRow[], groupBy: GroupBy): RollupGroup[] {
       color = '#6366f1'
     }
 
-    const g = map.get(key) || { label, color, total: 0, rows: [] }
-    g.total += -t.amountCents
+    const upcoming = isUpcoming(t)
+    const g = map.get(key) || { label, color, total: 0, count: 0, rows: [] }
+    if (!upcoming) {
+      g.total += -t.amountCents
+      g.count += 1
+    }
     g.rows.push(t)
     map.set(key, g)
   }
@@ -105,8 +119,13 @@ export function rollup(expenses: TxnRow[], groupBy: GroupBy): RollupGroup[] {
       color: g.color,
       total: g.total,
       share: totalSpent > 0 ? g.total / totalSpent : 0,
-      count: g.rows.length,
-      rows: g.rows.sort((a, b) => b.date.localeCompare(a.date)),
+      count: g.count,
+      rows: g.rows.sort((a, b) => {
+        const aUp = isUpcoming(a), bUp = isUpcoming(b)
+        if (aUp !== bUp) return aUp ? 1 : -1
+        return b.date.localeCompare(a.date)
+      }),
     }))
+    .filter(g => g.count > 0 || g.rows.length > 0)
     .sort((a, b) => b.total - a.total)
 }
