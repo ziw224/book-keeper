@@ -13,7 +13,7 @@ import { kindOf, isUpcoming, visibleRows, computeSummary, rollup, type GroupBy, 
 interface Card { id: string; name: string; issuer: string; last4: string; type: string; statementCloseDay: number | null; }
 interface Txn extends TxnRow {
   cardId: string; cycleKey: string | null; cycleLabel: string | null;
-  isPending?: boolean; paymentStatus?: string; paidDate?: string | null; statementBalanceId?: string;
+  isPending?: boolean; paymentStatus?: string; paidDate?: string | null; statementBalanceId?: string; statementTotalCents?: number;
   notes?: string | null;
   card: { id: string; name: string; last4: string; type: string; statementCloseDay: number | null };
 }
@@ -487,7 +487,7 @@ function TxnRowComp({ t, onEdit, onDelete, pending, onConfirmDelete, onCancelDel
       <span className="w-12 shrink-0 text-neutral-500">{t.date.slice(5)}</span>
       <span className="min-w-0 flex-1 truncate font-medium text-neutral-900">
         {kind === 'adjustment' ? `${t.card.name} •••• ${t.card.last4}` : t.merchant}
-        {kind === 'adjustment' && <span className="ml-1 text-xs text-neutral-400">Statement Adj.</span>}
+        {kind === 'adjustment' && <span className="ml-1 text-xs text-neutral-400">Stmt {t.statementTotalCents != null ? formatUSD(t.statementTotalCents) : ''}</span>}
         {upcoming && <span className="ml-1 text-xs text-sky-600 bg-sky-50 px-1 py-0.5 rounded-md">Upcoming</span>}
         {t.recurringRuleId && <span className="ml-1 text-xs text-violet-600 bg-violet-50 px-1 py-0.5 rounded-md">recurring</span>}
         {kind === 'adjustment' && (

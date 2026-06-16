@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
           paymentStatus: sb.paymentStatus,
           paidDate: sb.paidDate,
           statementBalanceId: sb.id,
+          statementTotalCents: sb.statementTotalCents,
           createdAt: sb.createdAt,
           updatedAt: sb.updatedAt,
         } as typeof withCycle[0])
