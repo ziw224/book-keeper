@@ -286,13 +286,10 @@ export default function CalendarPage() {
               <button onClick={() => setShowQuick(false)} className="rounded-xl p-2 text-neutral-400 hover:bg-neutral-100"><X className="h-5 w-5" /></button>
             </div>
 
-            {/* Expense / Income tabs — press Tab on toggle to switch */}
-            <div className="mb-4 flex items-center gap-3">
-              <div className="inline-flex rounded-lg bg-neutral-100 p-0.5" onKeyDown={e => { if (e.key === 'Tab') { e.preventDefault(); setQuickMode(m => m === 'expense' ? 'income' : 'expense'); } }}>
-                <button onClick={() => setQuickMode('expense')} className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${quickMode === 'expense' ? 'bg-white shadow-sm text-rose-600' : 'text-neutral-600 hover:text-neutral-900'}`}>− Expense</button>
-                <button onClick={() => setQuickMode('income')} className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${quickMode === 'income' ? 'bg-white shadow-sm text-emerald-600' : 'text-neutral-600 hover:text-neutral-900'}`}>+ Income</button>
-              </div>
-              <span className="text-[10px] text-neutral-400">Tab to switch</span>
+            {/* Expense / Income tabs */}
+            <div className="mb-4 inline-flex rounded-lg bg-neutral-100 p-0.5">
+              <button type="button" tabIndex={-1} onClick={() => setQuickMode('expense')} className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${quickMode === 'expense' ? 'bg-white shadow-sm text-rose-600' : 'text-neutral-600 hover:text-neutral-900'}`}>− Expense</button>
+              <button type="button" tabIndex={-1} onClick={() => setQuickMode('income')} className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${quickMode === 'income' ? 'bg-white shadow-sm text-emerald-600' : 'text-neutral-600 hover:text-neutral-900'}`}>+ Income</button>
             </div>
 
             <div className="space-y-2">
