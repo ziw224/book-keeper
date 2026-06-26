@@ -137,7 +137,7 @@ export default function CalendarPage() {
           <p className="mt-1 text-sm text-neutral-500">Daily spending overview</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={openQuickAdd} className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-neutral-800 transition">
+          <button onClick={() => openQuickAdd()} className="inline-flex items-center gap-2 rounded-xl bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-neutral-800 transition">
             <Plus className="h-4 w-4" /> Add today&apos;s spending
           </button>
           <button onClick={prevMonth} className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-100"><ChevronLeft className="h-5 w-5" /></button>
