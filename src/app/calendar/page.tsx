@@ -92,6 +92,7 @@ export default function CalendarPage() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [showQuick, setShowQuick] = useState(false);
   const [quickDate, setQuickDate] = useState(today);
+  const [quickMode, setQuickMode] = useState<'expense' | 'income'>('expense');
   const [quickRows, setQuickRows] = useState<{ merchant: string; amount: string; category: string; cardId: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -141,6 +142,7 @@ export default function CalendarPage() {
 
   function openQuickAdd(date?: string) {
     setQuickDate(date || today);
+    setQuickMode('expense');
     setQuickRows([{ merchant: '', amount: '', category: SUGGESTED_CATEGORIES[0], cardId: cards[0]?.id || '' }]);
     setShowQuick(true);
   }
@@ -158,17 +160,19 @@ export default function CalendarPage() {
   }
 
   async function saveAll() {
-    const valid = quickRows.filter(r => r.merchant.trim() && r.amount.trim() && r.cardId);
+    const valid = quickRows.filter(r => r.merchant.trim() && r.amount.trim() && (quickMode === 'income' || r.cardId));
     if (valid.length === 0) return;
     setSaving(true);
     let count = 0;
     for (const row of valid) {
       try {
-        const amountCents = toCents(row.amount);
+        const raw = Math.abs(toCents(row.amount));
+        const amountCents = quickMode === 'expense' ? -raw : raw;
+        const cardId = quickMode === 'income' ? (row.cardId || cards.find(c => c.type === 'debit')?.id || cards[0]?.id) : row.cardId;
         await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId: row.cardId, date: quickDate, merchant: row.merchant.trim(), amountCents, category: row.category, notes: null }),
+          body: JSON.stringify({ cardId, date: quickDate, merchant: row.merchant.trim(), amountCents, category: row.category, notes: null }),
         });
         count++;
       } catch {}
@@ -276,21 +280,29 @@ export default function CalendarPage() {
           <div className="w-full max-w-3xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold">Add spending</h2>
+                <h2 className="text-lg font-bold">Add transaction</h2>
                 <p className="text-xs text-neutral-500">{quickDate}{quickDate === today ? ' (today)' : ''}</p>
               </div>
               <button onClick={() => setShowQuick(false)} className="rounded-xl p-2 text-neutral-400 hover:bg-neutral-100"><X className="h-5 w-5" /></button>
+            </div>
+
+            {/* Expense / Income tabs */}
+            <div className="mb-4 inline-flex rounded-lg bg-neutral-100 p-0.5">
+              <button onClick={() => setQuickMode('expense')} className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${quickMode === 'expense' ? 'bg-white shadow-sm text-rose-600' : 'text-neutral-600 hover:text-neutral-900'}`}>− Expense</button>
+              <button onClick={() => setQuickMode('income')} className={`rounded-md px-4 py-1.5 text-xs font-semibold transition ${quickMode === 'income' ? 'bg-white shadow-sm text-emerald-600' : 'text-neutral-600 hover:text-neutral-900'}`}>+ Income</button>
             </div>
 
             <div className="space-y-2">
               {quickRows.map((row, idx) => (
                 <div key={idx} className="flex flex-wrap items-center gap-2">
                   <input value={row.merchant} onChange={e => updateQuickRow(idx, 'merchant', e.target.value)} placeholder="Merchant" className="h-9 min-w-0 flex-1 basis-40 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
-                  <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder="-12.50" inputMode="text" className="h-9 w-24 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" title="Negative = expense, positive = income" />
+                  <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder={quickMode === 'expense' ? '12.50' : '3000'} inputMode="decimal" className="h-9 w-24 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
                   <QuickCatPicker value={row.category} onChange={v => updateQuickRow(idx, 'category', v)} />
-                  <select value={row.cardId} onChange={e => updateQuickRow(idx, 'cardId', e.target.value)} className="h-9 w-36 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none truncate">
-                    {cards.map(c => <option key={c.id} value={c.id}>{c.name} •• {c.last4}</option>)}
-                  </select>
+                  {quickMode === 'expense' && (
+                    <select value={row.cardId} onChange={e => updateQuickRow(idx, 'cardId', e.target.value)} className="h-9 w-36 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none truncate">
+                      {cards.map(c => <option key={c.id} value={c.id}>{c.name} •• {c.last4}</option>)}
+                    </select>
+                  )}
                   {quickRows.length > 1 && <button onClick={() => removeQuickRow(idx)} className="shrink-0 rounded p-1 text-neutral-400 hover:text-rose-600"><X className="h-4 w-4" /></button>}
                 </div>
               ))}
