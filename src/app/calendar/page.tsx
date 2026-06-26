@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { ChevronLeft, ChevronRight, Plus, X, Check } from 'lucide-react';
 import { formatUSD, toCents } from '@/lib/money';
-import { categoryColor, categoryIcon, SUGGESTED_CATEGORIES } from '@/lib/categories';
+import { categoryColor, categoryIcon, SUGGESTED_CATEGORIES, getAllCategories, addCustomCategory } from '@/lib/categories';
 import { kindOf, isUpcoming, type TxnRow } from '@/lib/txn';
 
 interface Txn extends TxnRow {
@@ -29,6 +29,58 @@ function buildCells(year: number, monthIdx: number) {
   let nd = 1;
   while (cells.length < 42) { cells.push({ day: nd, key: dateKey(year, monthIdx + 1, nd), muted: true }); nd++; }
   return cells;
+}
+
+function QuickCatPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newIcon, setNewIcon] = useState('');
+  const [newName, setNewName] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) { setOpen(false); setCreating(false); } };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const allCats = getAllCategories();
+
+  return (
+    <div ref={ref} className="relative w-32 min-w-0 shrink-0">
+      <button type="button" onClick={() => setOpen(o => !o)} className="flex h-9 w-full items-center gap-1 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none hover:border-neutral-300 truncate">
+        <span>{categoryIcon(value)}</span>
+        <span className="truncate">{value || 'Category'}</span>
+        <ChevronRight className={`ml-auto h-3 w-3 shrink-0 text-neutral-400 transition-transform ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute left-0 bottom-[calc(100%+4px)] z-[60] w-48 max-h-56 overflow-auto rounded-xl border border-neutral-200 bg-white p-1 shadow-xl">
+          {allCats.map(c => (
+            <button key={c} type="button" onClick={() => { onChange(c); setOpen(false); }} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs hover:bg-neutral-50 ${value === c ? 'font-semibold text-indigo-600' : 'text-neutral-700'}`}>
+              <span>{categoryIcon(c)}</span>{c}
+            </button>
+          ))}
+          <div className="border-t border-neutral-100 mt-1 pt-1">
+            {!creating ? (
+              <button type="button" onClick={() => setCreating(true)} className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-600 hover:bg-indigo-50">
+                <Plus className="h-3 w-3" /> Custom
+              </button>
+            ) : (
+              <div className="p-1.5 space-y-1.5">
+                <div className="flex gap-1.5">
+                  <input value={newIcon} onChange={e => setNewIcon(e.target.value)} placeholder="😀" className="h-7 w-9 rounded border border-neutral-200 text-center text-sm outline-none" maxLength={4} autoFocus />
+                  <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Name" className="h-7 flex-1 min-w-0 rounded border border-neutral-200 px-2 text-xs outline-none"
+                    onKeyDown={e => { if (e.key === 'Enter' && newName.trim()) { e.preventDefault(); e.stopPropagation(); addCustomCategory(newName.trim(), newIcon.trim() || '📌'); onChange(newName.trim()); setCreating(false); setNewIcon(''); setNewName(''); setOpen(false); } }} />
+                </div>
+                <button type="button" onClick={() => { if (!newName.trim()) return; addCustomCategory(newName.trim(), newIcon.trim() || '📌'); onChange(newName.trim()); setCreating(false); setNewIcon(''); setNewName(''); setOpen(false); }} className="rounded bg-indigo-600 px-2 py-1 text-[10px] font-semibold text-white">Add</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function CalendarPage() {
@@ -235,9 +287,7 @@ export default function CalendarPage() {
                 <div key={idx} className="flex flex-wrap items-center gap-2">
                   <input value={row.merchant} onChange={e => updateQuickRow(idx, 'merchant', e.target.value)} placeholder="Merchant" className="h-9 min-w-0 flex-1 basis-40 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
                   <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder="Amount" inputMode="decimal" className="h-9 w-24 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
-                  <select value={row.category} onChange={e => updateQuickRow(idx, 'category', e.target.value)} className="h-9 w-32 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none">
-                    {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c}>{categoryIcon(c)} {c}</option>)}
-                  </select>
+                  <QuickCatPicker value={row.category} onChange={v => updateQuickRow(idx, 'category', v)} />
                   <select value={row.cardId} onChange={e => updateQuickRow(idx, 'cardId', e.target.value)} className="h-9 w-36 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none truncate">
                     {cards.map(c => <option key={c.id} value={c.id}>{c.name} •• {c.last4}</option>)}
                   </select>
