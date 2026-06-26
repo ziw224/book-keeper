@@ -11,7 +11,7 @@ interface Txn extends TxnRow {
   card: { id: string; name: string; last4: string; type: string; statementCloseDay: number | null };
   notes?: string | null;
 }
-interface Card { id: string; name: string; last4: string; }
+interface Card { id: string; name: string; last4: string; type: string; }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
