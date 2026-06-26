@@ -164,7 +164,7 @@ export default function CalendarPage() {
     let count = 0;
     for (const row of valid) {
       try {
-        const amountCents = -Math.abs(toCents(row.amount));
+        const amountCents = toCents(row.amount);
         await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -286,7 +286,7 @@ export default function CalendarPage() {
               {quickRows.map((row, idx) => (
                 <div key={idx} className="flex flex-wrap items-center gap-2">
                   <input value={row.merchant} onChange={e => updateQuickRow(idx, 'merchant', e.target.value)} placeholder="Merchant" className="h-9 min-w-0 flex-1 basis-40 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
-                  <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder="Amount" inputMode="decimal" className="h-9 w-24 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
+                  <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder="-12.50" inputMode="text" className="h-9 w-24 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" title="Negative = expense, positive = income" />
                   <QuickCatPicker value={row.category} onChange={v => updateQuickRow(idx, 'category', v)} />
                   <select value={row.cardId} onChange={e => updateQuickRow(idx, 'cardId', e.target.value)} className="h-9 w-36 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none truncate">
                     {cards.map(c => <option key={c.id} value={c.id}>{c.name} •• {c.last4}</option>)}
