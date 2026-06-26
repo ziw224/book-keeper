@@ -172,7 +172,7 @@ export default function CalendarPage() {
         await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId, date: quickDate, merchant: row.merchant.trim(), amountCents, category: row.category, notes: null }),
+          body: JSON.stringify({ cardId, date: quickDate, merchant: row.merchant.trim(), amountCents, category: quickMode === 'income' ? 'Income' : row.category, notes: null }),
         });
         count++;
       } catch {}
@@ -297,7 +297,7 @@ export default function CalendarPage() {
                 <div key={idx} className="flex flex-wrap items-center gap-2">
                   <input value={row.merchant} onChange={e => updateQuickRow(idx, 'merchant', e.target.value)} placeholder="Merchant" className="h-9 min-w-0 flex-1 basis-40 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
                   <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder={quickMode === 'expense' ? '12.50' : '3000'} inputMode="decimal" className="h-9 w-24 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
-                  <QuickCatPicker value={row.category} onChange={v => updateQuickRow(idx, 'category', v)} />
+                  {quickMode === 'expense' && <QuickCatPicker value={row.category} onChange={v => updateQuickRow(idx, 'category', v)} />}
                   {quickMode === 'expense' && (
                     <select value={row.cardId} onChange={e => updateQuickRow(idx, 'cardId', e.target.value)} className="h-9 w-36 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none truncate">
                       {cards.map(c => <option key={c.id} value={c.id}>{c.name} •• {c.last4}</option>)}

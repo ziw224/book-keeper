@@ -232,11 +232,11 @@ export default function TransactionsPage() {
     let amountCents: number;
     try { amountCents = Math.abs(toCents(fmAmount)); } catch { return setFormErr('Enter a valid amount.'); }
     if (fmTxnType === 'expense') amountCents = -amountCents;
-    if (!fmCat.trim()) return setFormErr('Pick a category.');
+    if (fmTxnType === 'expense' && !fmCat.trim()) return setFormErr('Pick a category.');
     setSaving(true);
     try {
       const canonicalMerchant = findCanonicalMerchant(fmMerchant, allMerchantNames);
-      const payload: Record<string, unknown> = { cardId: fmCard, date: fmDate, merchant: canonicalMerchant, amountCents, category: fmCat.trim(), notes: fmNotes.trim() || null };
+      const payload: Record<string, unknown> = { cardId: fmCard, date: fmDate, merchant: canonicalMerchant, amountCents, category: fmTxnType === 'income' ? 'Income' : fmCat.trim(), notes: fmNotes.trim() || null };
       if (fmRecurring && !editing) { payload.recurring = true; payload.recurringFrequency = fmRecurFreq; payload.recurringDay = fmRecurDay ? parseInt(fmRecurDay, 10) : parseInt(fmDate.split('-')[2], 10); if (fmRecurEnd) payload.recurringEndDate = fmRecurEnd; }
       const body = JSON.stringify(payload);
       if (editing) await api(`/api/transactions/${editing}`, { method: 'PATCH', body });
@@ -432,7 +432,7 @@ export default function TransactionsPage() {
               </FmField>
               <FmField label="Date"><CalendarPicker value={fmDate} onChange={setFmDate} notices={calendarNotices} /></FmField>
               <FmField label="Card"><ModalDropdown value={fmCard} placeholder="Select card…" options={getSortedCards(cards).map(c => ({ value: c.id, label: `${c.name} •••• ${c.last4}` }))} onChange={setFmCard} /></FmField>
-              <FmField label="Category"><CategoryPickerModal value={fmCat} onChange={setFmCat} /></FmField>
+              {fmTxnType === 'expense' ? <FmField label="Category"><CategoryPickerModal value={fmCat} onChange={setFmCat} /></FmField> : <FmField label="Category"><span className="block h-[42px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-500">Income</span></FmField>}
               <FmField label="Notes (optional)"><input value={fmNotes} onChange={e => setFmNotes(e.target.value)} placeholder="Optional" className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100" /></FmField>
             </div>
             {!editing && <div className="mt-4"><label className="flex items-center gap-3 cursor-pointer"><input type="checkbox" checked={fmRecurring} onChange={e => { setFmRecurring(e.target.checked); if (e.target.checked && !fmRecurDay && fmDate) setFmRecurDay(String(parseInt(fmDate.split('-')[2], 10))); }} className="h-4 w-4 rounded border-slate-300 text-indigo-600" /><span className="text-sm font-semibold text-slate-700">🔁 Recurring</span></label>
