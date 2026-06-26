@@ -39,6 +39,7 @@ export default function CalendarPage() {
   const [cards, setCards] = useState<Card[]>([]);
   const [hovered, setHovered] = useState<string | null>(null);
   const [showQuick, setShowQuick] = useState(false);
+  const [quickDate, setQuickDate] = useState(today);
   const [quickRows, setQuickRows] = useState<{ merchant: string; amount: string; category: string; cardId: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -86,7 +87,8 @@ export default function CalendarPage() {
   function prevMonth() { if (viewMonth === 0) { setViewMonth(11); setViewYear(y => y - 1); } else setViewMonth(m => m - 1); }
   function nextMonth() { if (viewMonth === 11) { setViewMonth(0); setViewYear(y => y + 1); } else setViewMonth(m => m + 1); }
 
-  function openQuickAdd() {
+  function openQuickAdd(date?: string) {
+    setQuickDate(date || today);
     setQuickRows([{ merchant: '', amount: '', category: SUGGESTED_CATEGORIES[0], cardId: cards[0]?.id || '' }]);
     setShowQuick(true);
   }
@@ -114,7 +116,7 @@ export default function CalendarPage() {
         await fetch('/api/transactions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ cardId: row.cardId, date: today, merchant: row.merchant.trim(), amountCents, category: row.category, notes: null }),
+          body: JSON.stringify({ cardId: row.cardId, date: quickDate, merchant: row.merchant.trim(), amountCents, category: row.category, notes: null }),
         });
         count++;
       } catch {}
@@ -166,6 +168,7 @@ export default function CalendarPage() {
                 className={`relative min-h-[90px] border-b border-r border-neutral-100 p-1.5 transition ${cell.muted ? 'bg-neutral-50' : ''} ${future && !cell.muted ? 'opacity-40' : ''} ${isHovered ? 'ring-2 ring-inset ring-indigo-400' : ''}`}
                 onMouseEnter={() => setHovered(cell.key)}
                 onMouseLeave={() => setHovered(null)}
+                onContextMenu={e => { e.preventDefault(); openQuickAdd(cell.key); }}
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-xs font-semibold ${isToday ? 'flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white' : cell.muted ? 'text-neutral-300' : 'text-neutral-700'}`}>
@@ -218,27 +221,27 @@ export default function CalendarPage() {
       {/* Quick add modal */}
       {showQuick && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-950/30 p-4" onClick={() => setShowQuick(false)}>
-          <div className="w-full max-w-lg rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-3xl rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold">Add today&apos;s spending</h2>
-                <p className="text-xs text-neutral-500">{today}</p>
+                <h2 className="text-lg font-bold">Add spending</h2>
+                <p className="text-xs text-neutral-500">{quickDate}{quickDate === today ? ' (today)' : ''}</p>
               </div>
               <button onClick={() => setShowQuick(false)} className="rounded-xl p-2 text-neutral-400 hover:bg-neutral-100"><X className="h-5 w-5" /></button>
             </div>
 
             <div className="space-y-2">
               {quickRows.map((row, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <input value={row.merchant} onChange={e => updateQuickRow(idx, 'merchant', e.target.value)} placeholder="Merchant" className="h-9 flex-1 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
-                  <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder="Amount" inputMode="decimal" className="h-9 w-24 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
-                  <select value={row.category} onChange={e => updateQuickRow(idx, 'category', e.target.value)} className="h-9 w-28 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none">
+                <div key={idx} className="flex flex-wrap items-center gap-2">
+                  <input value={row.merchant} onChange={e => updateQuickRow(idx, 'merchant', e.target.value)} placeholder="Merchant" className="h-9 min-w-0 flex-1 basis-40 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
+                  <input value={row.amount} onChange={e => updateQuickRow(idx, 'amount', e.target.value)} placeholder="Amount" inputMode="decimal" className="h-9 w-24 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-2.5 text-sm outline-none focus:border-indigo-400" />
+                  <select value={row.category} onChange={e => updateQuickRow(idx, 'category', e.target.value)} className="h-9 w-32 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none">
                     {SUGGESTED_CATEGORIES.map(c => <option key={c} value={c}>{categoryIcon(c)} {c}</option>)}
                   </select>
-                  <select value={row.cardId} onChange={e => updateQuickRow(idx, 'cardId', e.target.value)} className="h-9 w-28 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none">
-                    {cards.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <select value={row.cardId} onChange={e => updateQuickRow(idx, 'cardId', e.target.value)} className="h-9 w-36 min-w-0 shrink-0 rounded-lg border border-neutral-200 px-1.5 text-xs outline-none truncate">
+                    {cards.map(c => <option key={c.id} value={c.id}>{c.name} •• {c.last4}</option>)}
                   </select>
-                  {quickRows.length > 1 && <button onClick={() => removeQuickRow(idx)} className="rounded p-1 text-neutral-400 hover:text-rose-600"><X className="h-4 w-4" /></button>}
+                  {quickRows.length > 1 && <button onClick={() => removeQuickRow(idx)} className="shrink-0 rounded p-1 text-neutral-400 hover:text-rose-600"><X className="h-4 w-4" /></button>}
                 </div>
               ))}
             </div>
